@@ -1,0 +1,50 @@
+import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext.jsx';
+import { isAdmin } from '../lib/admin.js';
+
+export default function Layout() {
+  const { user, profile, signOut } = useAuth();
+  const nav = useNavigate();
+  const admin = isAdmin(user);
+
+  const items = [
+    { to: '/bracket',     label: 'Bracket' },
+    { to: '/group',       label: 'Group' },
+    { to: '/how-to-play', label: 'How To Play' },
+    { to: '/settings',    label: 'Settings' },
+    ...(admin ? [{ to: '/admin', label: 'Admin' }] : []),
+  ];
+
+  return (
+    <div className="min-h-screen flex flex-col">
+      <header className="sticky top-0 z-30 bg-bg/95 backdrop-blur border-b border-border">
+        <div className="max-w-6xl mx-auto px-4 py-3 flex items-center gap-3">
+          <Link to="/bracket" className="display text-2xl text-gold tracking-wider">WC&nbsp;2026</Link>
+          {profile?.display_name && (
+            <span className="text-white text-sm hidden sm:inline">· {profile.display_name}</span>
+          )}
+          <div className="ml-auto flex items-center gap-1 overflow-x-auto">
+            {items.map((i) => (
+              <NavLink key={i.to} to={i.to}
+                className={({ isActive }) =>
+                  `px-3 py-1.5 rounded-md text-sm whitespace-nowrap ${isActive ? 'bg-panel text-gold' : 'text-muted hover:text-white'}`
+                }>
+                {i.label}
+              </NavLink>
+            ))}
+            <button onClick={async () => { await signOut(); nav('/'); }}
+              className="px-3 py-1.5 rounded-md text-sm text-muted hover:text-white">
+              Sign out
+            </button>
+          </div>
+        </div>
+      </header>
+      <main className="flex-1 max-w-6xl mx-auto w-full px-3 sm:px-4 py-4 sm:py-6">
+        <Outlet />
+      </main>
+      <footer className="border-t border-border py-4 text-center text-muted text-xs">
+        Friend-group only. Not affiliated with FIFA.
+      </footer>
+    </div>
+  );
+}

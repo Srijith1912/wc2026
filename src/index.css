@@ -1,0 +1,25 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html, body, #root { height: 100%; }
+body { background: #0a0a0a; color: #fff; -webkit-font-smoothing: antialiased; }
+
+@layer components {
+  .btn { @apply inline-flex items-center justify-center px-4 py-2.5 rounded-lg font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed; }
+  .btn-primary { @apply btn bg-gold text-black hover:bg-goldDim; }
+  .btn-secondary { @apply btn bg-panel2 text-white border border-border hover:border-gold; }
+  .btn-ghost { @apply btn text-muted hover:text-white; }
+  .input { @apply w-full px-3 py-2.5 rounded-lg bg-panel2 border border-border text-white placeholder-muted focus:outline-none focus:border-gold; }
+  .select { @apply input appearance-none pr-8 cursor-pointer; }
+  .card { @apply bg-panel rounded-xl border border-border p-4; }
+  .label { @apply text-xs uppercase tracking-wider text-muted font-semibold; }
+  .display { font-family: 'Bebas Neue', system-ui, sans-serif; letter-spacing: 0.02em; }
+  .chip { @apply inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold; }
+  .locked { @apply opacity-50 cursor-not-allowed; }
+}
+
+select.select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' fill='%238a8a8a'%3E%3Cpath d='M6 8L2 4h8z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right .6rem center; background-size: 12px; }
+
+/* tap targets on mobile */
+button, [role="button"], select, input { min-height: 40px; }
