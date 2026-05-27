@@ -1,4 +1,4 @@
-import { R32, R16, QF, SF, FINAL, THIRD_PLACE, resolveSlot, resolveParent, resolveThirdPlaceSide, matchLabel } from '../../lib/bracket.js';
+import { R32, R16, QF, SF, FINAL, THIRD_PLACE, resolveSlot, resolveParent, resolveThirdPlaceSide, matchLabel, descendantsOf } from '../../lib/bracket.js';
 import { TEAMS, teamLabel } from '../../lib/teams.js';
 import Flag from '../../components/Flag.jsx';
 
@@ -12,10 +12,18 @@ export default function KnockoutTab({ round, bracket, fixture, setBracket, locke
   };
 
   function pick(matchId, code) {
-    setBracket((b) => ({
-      ...b,
-      knockout_picks: { ...(b.knockout_picks || {}), [matchId]: code || null },
-    }));
+    setBracket((b) => {
+      const oldCode = b.knockout_picks?.[matchId] || null;
+      const newCode = code || null;
+      if (oldCode === newCode) return b;
+      const knockout = { ...(b.knockout_picks || {}), [matchId]: newCode };
+      // Cascade clear: any downstream pick referenced this match's winner;
+      // those picks are now potentially invalid. Force re-confirmation.
+      for (const d of descendantsOf(matchId)) {
+        if (knockout[d]) delete knockout[d];
+      }
+      return { ...b, knockout_picks: knockout };
+    });
   }
 
   function rowFor(matchId, date, sides) {

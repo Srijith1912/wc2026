@@ -68,8 +68,24 @@ create table if not exists public.groups (
   id         uuid primary key default gen_random_uuid(),
   name       text not null,
   passkey    text not null unique,
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  created_by uuid references public.profiles(id) on delete set null
 );
+
+-- Safe to re-run on an older DB that pre-dates created_by.
+alter table public.groups add column if not exists created_by uuid references public.profiles(id) on delete set null;
+
+-- One-time backfill: any group that lacks a creator (created before the
+-- column existed, or via the older create_group() RPC) gets assigned to its
+-- earliest joined member. Idempotent — second runs match nothing.
+update public.groups g
+set created_by = (
+  select user_id from public.group_members
+  where group_id = g.id
+  order by joined_at asc
+  limit 1
+)
+where created_by is null;
 
 create table if not exists public.group_members (
   group_id  uuid not null references public.groups(id) on delete cascade,
@@ -120,13 +136,27 @@ drop policy if exists profiles_update on public.profiles;
 create policy profiles_update on public.profiles for update using (id = auth.uid()) with check (id = auth.uid());
 
 -- groups: rows are NOT directly selectable except by members (so passkey never leaks).
+-- The group creator can always see their own group too (so they can delete it
+-- even after they leave).
 drop policy if exists groups_select on public.groups;
 create policy groups_select on public.groups for select using (
-  public.is_member_of(groups.id) or public.is_admin()
+  public.is_member_of(groups.id) or created_by = auth.uid() or public.is_admin()
 );
 
-drop policy if exists groups_admin_write on public.groups;
-create policy groups_admin_write on public.groups for all using (public.is_admin()) with check (public.is_admin());
+-- INSERT is only via create_group() RPC (security definer); direct insert blocked.
+drop policy if exists groups_admin_write on public.groups;        -- legacy name; remove
+drop policy if exists groups_insert on public.groups;
+create policy groups_insert on public.groups for insert with check (public.is_admin());
+
+-- UPDATE only by app admin (rename, change passkey, etc.)
+drop policy if exists groups_update on public.groups;
+create policy groups_update on public.groups for update using (public.is_admin()) with check (public.is_admin());
+
+-- DELETE: group creator OR app admin. Cascades to group_members + brackets.
+drop policy if exists groups_delete on public.groups;
+create policy groups_delete on public.groups for delete using (
+  created_by = auth.uid() or public.is_admin()
+);
 
 -- group_members: users can see other members of groups they belong to.
 drop policy if exists gm_select on public.group_members;
@@ -134,9 +164,21 @@ create policy gm_select on public.group_members for select using (
   user_id = auth.uid() or public.is_member_of(group_members.group_id)
 );
 
--- only the join_group() RPC inserts here (security definer); no direct insert.
-drop policy if exists gm_admin_write on public.group_members;
-create policy gm_admin_write on public.group_members for all using (public.is_admin()) with check (public.is_admin());
+-- INSERT only via join_group() RPC (security definer) or app admin direct.
+drop policy if exists gm_admin_write on public.group_members;     -- legacy name; remove
+drop policy if exists gm_insert on public.group_members;
+create policy gm_insert on public.group_members for insert with check (public.is_admin());
+
+-- DELETE:
+--   - leaving yourself (user_id = auth.uid())
+--   - group creator kicking a member
+--   - app admin
+drop policy if exists gm_delete on public.group_members;
+create policy gm_delete on public.group_members for delete using (
+  user_id = auth.uid()
+  or exists (select 1 from public.groups g where g.id = group_members.group_id and g.created_by = auth.uid())
+  or public.is_admin()
+);
 
 -- brackets: user can read+write their own; can read others' iff they share a group.
 drop policy if exists brackets_select on public.brackets;
@@ -215,7 +257,7 @@ begin
     raise exception 'That passkey is already taken — pick a different one';
   end if;
 
-  insert into public.groups (name, passkey) values (v_name, v_passkey)
+  insert into public.groups (name, passkey, created_by) values (v_name, v_passkey, auth.uid())
   returning id into v_id;
 
   insert into public.group_members (group_id, user_id) values (v_id, auth.uid());
@@ -225,6 +267,90 @@ end;
 $$;
 
 grant execute on function public.create_group(text, text) to authenticated;
+
+------------------------------------------------------------
+-- RPC: transfer_group_leader(group_id, new_leader_id)
+-- The current group creator (or app admin) can hand leadership to any
+-- existing member.
+------------------------------------------------------------
+create or replace function public.transfer_group_leader(p_group_id uuid, p_new_leader uuid)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if auth.uid() is null then raise exception 'Not authenticated'; end if;
+
+  if not exists (
+    select 1 from public.groups
+    where id = p_group_id and (created_by = auth.uid() or public.is_admin())
+  ) then
+    raise exception 'Only the current group leader can transfer leadership';
+  end if;
+
+  if not exists (
+    select 1 from public.group_members
+    where group_id = p_group_id and user_id = p_new_leader
+  ) then
+    raise exception 'New leader must already be a member of the group';
+  end if;
+
+  update public.groups set created_by = p_new_leader where id = p_group_id;
+end;
+$$;
+
+grant execute on function public.transfer_group_leader(uuid, uuid) to authenticated;
+
+------------------------------------------------------------
+-- TRIGGER: when the group creator leaves, transfer leadership to the oldest
+-- remaining member. If no members remain, the group is deleted (orphaned
+-- groups aren't useful).
+-- Skips silently when the parent group is itself being cascade-deleted.
+------------------------------------------------------------
+create or replace function public.handle_member_leave()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_next_leader uuid;
+  v_was_creator boolean;
+begin
+  -- if the parent group is gone (cascade delete), nothing to do
+  if not exists (select 1 from public.groups where id = old.group_id) then
+    return old;
+  end if;
+
+  v_was_creator := exists (
+    select 1 from public.groups
+    where id = old.group_id and created_by = old.user_id
+  );
+
+  if v_was_creator then
+    select user_id into v_next_leader
+    from public.group_members
+    where group_id = old.group_id
+    order by joined_at asc
+    limit 1;
+
+    if v_next_leader is not null then
+      update public.groups set created_by = v_next_leader where id = old.group_id;
+    else
+      -- empty group — delete it (cascades to any orphan group_members)
+      delete from public.groups where id = old.group_id;
+    end if;
+  end if;
+
+  return old;
+end;
+$$;
+
+drop trigger if exists trg_handle_member_leave on public.group_members;
+create trigger trg_handle_member_leave
+  after delete on public.group_members
+  for each row execute function public.handle_member_leave();
 
 ------------------------------------------------------------
 -- RPC: handle_new_user — creates a profile row on signup
@@ -251,6 +377,37 @@ create trigger on_auth_user_created
   for each row execute function public.handle_new_user();
 
 ------------------------------------------------------------
+-- DEADLINE ENFORCEMENT (server-side, can't be bypassed from the client)
+-- Group stage + best-thirds lock at 2026-06-11 19:00 UTC (12:00 PM MST).
+-- Knockout picks lock at 2026-06-28 19:00 UTC (12:00 PM MST).
+-- After each deadline, the corresponding fields can no longer change for
+-- ANY user — even if someone hits the REST API directly.
+------------------------------------------------------------
+create or replace function public.enforce_bracket_locks()
+returns trigger
+language plpgsql
+as $$
+declare
+  group_lock constant timestamptz := timestamptz '2026-06-11 19:00:00+00';
+  ko_lock    constant timestamptz := timestamptz '2026-06-28 19:00:00+00';
+begin
+  if now() >= group_lock then
+    new.group_picks      := old.group_picks;
+    new.third_place_bets := old.third_place_bets;
+  end if;
+  if now() >= ko_lock then
+    new.knockout_picks   := old.knockout_picks;
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_enforce_bracket_locks on public.brackets;
+create trigger trg_enforce_bracket_locks
+  before update on public.brackets
+  for each row execute function public.enforce_bracket_locks();
+
+------------------------------------------------------------
 -- Example: create the first group (run manually as admin)
 ------------------------------------------------------------
--- insert into public.groups (name, passkey) values ('The Boys', 'changeme-secret');
+-- insert into public.groups (name, passkey, created_by) values ('The Boys', 'changeme-secret', null);

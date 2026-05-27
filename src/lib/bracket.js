@@ -93,6 +93,45 @@ const MATCH_LABELS = {
 
 export function matchLabel(id) { return MATCH_LABELS[id] || id; }
 
+// ─── Cascade helpers ──────────────────────────────────────────────────────
+// Used to clear all downstream picks when an upstream pick changes — a pick
+// that depended on a now-changed team is invalid and should be re-confirmed.
+
+const KO_CHILDREN = (() => {
+  const map = {};
+  const all = [...R16, ...QF, ...SF, FINAL, THIRD_PLACE];
+  for (const m of all) {
+    for (const p of (m.parents || [])) {
+      (map[p] = map[p] || []).push(m.id);
+    }
+  }
+  return map;
+})();
+
+export function descendantsOf(matchId) {
+  const result = new Set();
+  const queue = [matchId];
+  while (queue.length) {
+    const cur = queue.shift();
+    const children = KO_CHILDREN[cur] || [];
+    for (const c of children) {
+      if (!result.has(c)) {
+        result.add(c);
+        queue.push(c);
+      }
+    }
+  }
+  return [...result];
+}
+
+// All R32 match IDs whose A or B slot resolves from a given group's W or RU.
+export function r32MatchesUsingGroupSlot(group, kind /* 'winner' | 'runnerUp' */) {
+  return R32.filter((m) =>
+    (m.a.kind === kind && m.a.group === group) ||
+    (m.b.kind === kind && m.b.group === group)
+  ).map((m) => m.id);
+}
+
 // Resolve the team code that occupies a given slot in a given match,
 // given user's group_picks + admin fixture_state + user's knockout_picks.
 // Returns { code, label, locked: true|false, reason: '...' }
