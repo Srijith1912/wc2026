@@ -17,8 +17,9 @@ A small friend-group bracket app for the 2026 FIFA World Cup. Make your picks, s
 ### 2. Fill out the group stage *(lock: June 11, 12:00 PM MST)*
 - For each of the 12 groups (A–L), pick the **winner** and the **runner-up**.
 - Pick **8 third-place teams** — one per group, from any 8 of the 12 groups. These are your bets for which third-place teams advance to the Round of 32.
+- Predict the three **individual awards** — Golden Ball (best player), Golden Boot (top scorer), Golden Glove (best goalkeeper). Free-text player names, **5 points each**.
 
-After June 11 12:00 PM MST, group-stage picks and the 8-thirds bet are locked.
+After June 11 12:00 PM MST, group-stage picks, the 8-thirds bet, and the awards picks are locked.
 
 ### 3. Fill out the knockout bracket *(lock: June 28, 12:00 PM MST)*
 - Between June 11 and June 27, the real group stage plays out.
@@ -33,7 +34,7 @@ After June 28 12:00 PM MST, the knockout bracket is locked. No more changes anyw
 - Everyone's picks are visible immediately, even before the deadlines.
 
 ### 5. After the final
-The group leader scores everyone manually using the points table on the **How To Play** page (157 points possible, with the champion worth just 15 — group-stage picks genuinely matter).
+The group leader scores everyone manually using the points table on the **How To Play** page (172 points possible, with the champion worth just 15 — group-stage picks genuinely matter).
 
 ---
 

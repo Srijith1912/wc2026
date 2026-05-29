@@ -6,6 +6,7 @@ import GroupStageTab from './bracketTabs/GroupStageTab.jsx';
 import ThirdsTab from './bracketTabs/ThirdsTab.jsx';
 import KnockoutTab from './bracketTabs/KnockoutTab.jsx';
 import FullBracketTab from './bracketTabs/FullBracketTab.jsx';
+import AwardsCard from '../components/AwardsCard.jsx';
 
 const TABS = [
   { id: 'GROUPS', label: 'Group Stage' },
@@ -43,6 +44,8 @@ export default function MemberBracket() {
         </div>
         <Link to="/group" className="btn-secondary text-sm">← Back to group</Link>
       </div>
+
+      <AwardsCard bracket={bracket} setBracket={setBracket} locked readOnly />
 
       <div className="flex flex-wrap gap-1.5 mb-3">
         {TABS.map((t) => (

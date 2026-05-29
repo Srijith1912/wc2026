@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext.jsx';
 import useBracket from '../hooks/useBracket.js';
 import Countdown from '../components/Countdown.jsx';
 import SaveIndicator from '../components/SaveIndicator.jsx';
+import AwardsCard from '../components/AwardsCard.jsx';
 import GroupStageTab from './bracketTabs/GroupStageTab.jsx';
 import ThirdsTab from './bracketTabs/ThirdsTab.jsx';
 import KnockoutTab from './bracketTabs/KnockoutTab.jsx';
@@ -43,6 +44,8 @@ export default function Bracket() {
         <Countdown target={GROUP_LOCK_UTC} label="Group stage locks in" />
         <Countdown target={KO_LOCK_UTC}    label="Knockout bracket locks in" />
       </div>
+
+      <AwardsCard bracket={bracket} setBracket={setBracket} locked={gLocked} />
 
       <div className="flex items-center justify-between mb-3 gap-2">
         <div className="flex flex-wrap gap-1.5">

@@ -24,7 +24,7 @@ export default function useBracket(userId, { readOnly = false } = {}) {
         supabase.from('fixture_state').select('*').eq('id', 1).maybeSingle(),
       ]);
       if (cancelled) return;
-      setBracketSt(b || { user_id: userId, group_picks: {}, third_place_bets: [], knockout_picks: {} });
+      setBracketSt(b || { user_id: userId, group_picks: {}, third_place_bets: [], knockout_picks: {}, awards_picks: {} });
       setFixture(f  || { group_results: {}, third_place_assignments: {} });
       setLoading(false);
     })();
@@ -42,6 +42,7 @@ export default function useBracket(userId, { readOnly = false } = {}) {
       group_picks:      payload.group_picks      ?? {},
       third_place_bets: payload.third_place_bets ?? [],
       knockout_picks:   payload.knockout_picks   ?? {},
+      awards_picks:     payload.awards_picks     ?? {},
       updated_at: new Date().toISOString(),
     };
     // Default Supabase upsert returns the row, which re-evaluates SELECT RLS.

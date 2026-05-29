@@ -99,8 +99,12 @@ create table if not exists public.brackets (
   group_picks       jsonb not null default '{}'::jsonb,
   third_place_bets  text[] not null default array[]::text[],
   knockout_picks    jsonb not null default '{}'::jsonb,
+  awards_picks      jsonb not null default '{}'::jsonb,
   updated_at        timestamptz not null default now()
 );
+
+-- Safe to re-run on an older DB that pre-dates awards_picks.
+alter table public.brackets add column if not exists awards_picks jsonb not null default '{}'::jsonb;
 
 create table if not exists public.fixture_state (
   id                       int primary key default 1,
@@ -394,6 +398,7 @@ begin
   if now() >= group_lock then
     new.group_picks      := old.group_picks;
     new.third_place_bets := old.third_place_bets;
+    new.awards_picks     := old.awards_picks;
   end if;
   if now() >= ko_lock then
     new.knockout_picks   := old.knockout_picks;

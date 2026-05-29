@@ -25,6 +25,17 @@ export default function HowToPlay() {
       </section>
 
       <section className="card space-y-2">
+        <div className="display text-xl text-gold">Individual awards</div>
+        <p className="text-sm">Above the bracket tabs you'll find three text fields for tournament-long awards:</p>
+        <ul className="list-disc pl-5 space-y-1 text-sm">
+          <li><b>Golden Ball</b> — best player of the tournament</li>
+          <li><b>Golden Boot</b> — top scorer of the tournament</li>
+          <li><b>Golden Glove</b> — best goalkeeper of the tournament</li>
+        </ul>
+        <p className="text-sm">Type the player's name — any reasonable spelling works, the group leader resolves ties at scoring. These lock with the group stage on June 11, 12:00 PM MST.</p>
+      </section>
+
+      <section className="card space-y-2">
         <div className="display text-xl text-gold">Scoring (computed manually after the tournament)</div>
         <table className="w-full text-sm">
           <thead><tr className="text-left text-muted"><th>Pick</th><th>Pts each</th><th>Max</th></tr></thead>
@@ -38,7 +49,8 @@ export default function HowToPlay() {
             <tr><td>SF winner correct (×2)</td><td>8</td><td>16</td></tr>
             <tr><td>3rd-place playoff winner</td><td>10</td><td>10</td></tr>
             <tr><td>Champion correct</td><td>15</td><td>15</td></tr>
-            <tr className="border-t border-border font-semibold"><td>Total possible</td><td></td><td>157</td></tr>
+            <tr><td>Golden Ball / Boot / Glove (×3)</td><td>5</td><td>15</td></tr>
+            <tr className="border-t border-border font-semibold"><td>Total possible</td><td></td><td>172</td></tr>
           </tbody>
         </table>
       </section>
