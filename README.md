@@ -1,6 +1,6 @@
 # WC 2026 Predictions
 
-A small friend-group bracket app for the 2026 FIFA World Cup. Make your picks, see your friends' picks, talk trash. No money, no leaderboard in the app — the group leader scores it manually after the final.
+A bracket app for the 2026 FIFA World Cup. Make your picks, see everyone's picks, talk trash. No money. Scores are computed automatically as results come in, and a live top-10 leaderboard ranks everyone.
 
 🗓 **Tournament**: June 11 – July 19, 2026
 🇲🇽🇨🇦🇺🇸 **Hosts**: Canada, Mexico, USA
@@ -33,8 +33,10 @@ After June 28 12:00 PM MST, the knockout bracket is locked. No more changes anyw
 - The **Group** menu lists every member of every group you're in. Click a name → see their bracket (read-only).
 - Everyone's picks are visible immediately, even before the deadlines.
 
-### 5. After the final
-The group leader scores everyone manually using the points table on the **How To Play** page (172 points possible, with the champion worth just 15 — group-stage picks genuinely matter).
+### 5. Scoring & leaderboard
+- As the tournament plays out, the admin enters the real results on the **Admin** page — group finishers, the 8 advancing thirds, every knockout winner, and the award winners.
+- Your score updates automatically against the points table on the **How To Play** page (172 points possible, with the champion worth just 15 — group-stage picks genuinely matter). Watch your running total on the **Bracket** page.
+- The **Leaderboard** ranks the top 10 across everyone by points and opens when the knockout stage begins (June 28, 12:00 PM MST). It shows names and scores only — to view someone's actual picks they must be in one of your groups (Group page → tap their name). Scoring runs server-side, so the leaderboard stays fast no matter how many people play.
 
 ---
 

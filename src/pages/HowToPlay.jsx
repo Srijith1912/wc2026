@@ -3,7 +3,7 @@ export default function HowToPlay() {
     <article className="max-w-2xl mx-auto space-y-6 leading-relaxed">
       <header>
         <div className="display text-3xl text-gold">How To Play</div>
-        <p className="text-muted text-sm mt-1">Friend-group bracket for the 2026 FIFA World Cup. No real money, no leaderboard in-app — the admin scores it manually at the end.</p>
+        <p className="text-muted text-sm mt-1">Bracket game for the 2026 FIFA World Cup. No real money. Your score is calculated automatically as results come in, and a live leaderboard ranks everyone.</p>
       </header>
 
       <section className="card space-y-2">
@@ -12,6 +12,17 @@ export default function HowToPlay() {
           <li><b>Group stage + 8-of-48 thirds:</b> picks lock <b>June 11, 2026, 12:00 PM MST</b> (right before kickoff).</li>
           <li><b>Knockout bracket (R32 → Final):</b> picks lock <b>June 28, 2026, 12:00 PM MST</b>, right before R32 begins.</li>
         </ul>
+      </section>
+
+      <section className="card border-red-700/50 bg-red-900/15 text-red-300 space-y-1">
+        <div className="display text-lg text-red-300">⚠️ Important: complete your knockout bracket before June 28</div>
+        <p className="text-sm">
+          The final group-stage matches are played on <b>June 27</b>, so the teams that fill the
+          Round-of-32 third-place slots aren't confirmed until late that day. Please finish and
+          double-check your full knockout bracket and submit it before it locks on
+          <b> June 28, 2026, 12:00 PM MST</b>. Once the deadline passes, no further changes are
+          possible and any empty picks score zero.
+        </p>
       </section>
 
       <section className="card space-y-2">
@@ -32,11 +43,14 @@ export default function HowToPlay() {
           <li><b>Golden Boot</b> — top scorer of the tournament</li>
           <li><b>Golden Glove</b> — best goalkeeper of the tournament</li>
         </ul>
-        <p className="text-sm">Type the player's name — any reasonable spelling works, the group leader resolves ties at scoring. These lock with the group stage on June 11, 12:00 PM MST.</p>
+        <p className="text-sm">Enter each player's full name, including surname (for example, "Harry Kane"). Scoring ignores case and accents, so the common spelling is fine. These lock with the group stage on June 11, 12:00 PM MST.</p>
       </section>
 
       <section className="card space-y-2">
-        <div className="display text-xl text-gold">Scoring (computed manually after the tournament)</div>
+        <div className="display text-xl text-gold">Scoring &amp; leaderboard</div>
+        <p className="text-sm">As the tournament plays out, the admin enters the real results — group finishers, the 8 advancing thirds, every knockout winner, and the award winners. Your score updates automatically against the table below, and you can watch your running total grow on the Bracket page.</p>
+        <p className="text-sm">The <b>Leaderboard</b> ranks the top 10 across everyone by points. It opens when the knockout stage begins (June 28, 12:00 PM MST). It shows names and scores only — to see someone's actual picks, they need to be in one of your groups (open the Group page and tap their name).</p>
+        <div className="display text-base text-gold pt-1">Points table</div>
         <table className="w-full text-sm">
           <thead><tr className="text-left text-muted"><th>Pick</th><th>Pts each</th><th>Max</th></tr></thead>
           <tbody className="[&_td]:py-1 [&_td]:pr-3">

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import useBracket from '../hooks/useBracket.js';
 import { supabase } from '../lib/supabase.js';
 import GroupStageTab from './bracketTabs/GroupStageTab.jsx';
@@ -7,6 +7,7 @@ import ThirdsTab from './bracketTabs/ThirdsTab.jsx';
 import KnockoutTab from './bracketTabs/KnockoutTab.jsx';
 import FullBracketTab from './bracketTabs/FullBracketTab.jsx';
 import AwardsCard from '../components/AwardsCard.jsx';
+import ScoreCard from '../components/ScoreCard.jsx';
 
 const TABS = [
   { id: 'GROUPS', label: 'Group Stage' },
@@ -21,6 +22,7 @@ const TABS = [
 
 export default function MemberBracket() {
   const { userId } = useParams();
+  const nav = useNavigate();
   const [name, setName] = useState('');
   const [tab, setTab] = useState('GROUPS');
   const { loading, bracket, fixture } = useBracket(userId, { readOnly: true });
@@ -42,8 +44,10 @@ export default function MemberBracket() {
           <div className="text-xs text-muted">Viewing</div>
           <div className="display text-2xl text-gold">{name || 'Member'}</div>
         </div>
-        <Link to="/group" className="btn-secondary text-sm">← Back to group</Link>
+        <button onClick={() => nav(-1)} className="btn-secondary text-sm">← Back</button>
       </div>
+
+      <ScoreCard bracket={bracket} fixture={fixture} title={`${name || 'Player'}'s score`} showLeaderboardLink={false} />
 
       <AwardsCard bracket={bracket} setBracket={setBracket} locked readOnly />
 

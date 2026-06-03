@@ -9,8 +9,10 @@ export default function Layout() {
 
   const items = [
     { to: '/bracket',     label: 'Bracket' },
+    { to: '/leaderboard', label: 'Leaderboard' },
     { to: '/group',       label: 'Group' },
     { to: '/how-to-play', label: 'How To Play' },
+    { to: '/contact',     label: 'Contact' },
     { to: '/settings',    label: 'Settings' },
     ...(admin ? [{ to: '/admin', label: 'Admin' }] : []),
   ];
@@ -19,7 +21,7 @@ export default function Layout() {
     <div className="min-h-screen flex flex-col">
       <header className="sticky top-0 z-30 bg-bg/95 backdrop-blur border-b border-border">
         <div className="max-w-6xl mx-auto px-4 py-3 flex items-center gap-3">
-          <Link to="/bracket" className="display text-2xl text-gold tracking-wider">WC&nbsp;2026</Link>
+          <Link to="/" className="display text-2xl text-gold tracking-wider">WC&nbsp;2026</Link>
           {profile?.display_name && (
             <span className="text-white text-sm hidden sm:inline">· {profile.display_name}</span>
           )}
@@ -43,7 +45,9 @@ export default function Layout() {
         <Outlet />
       </main>
       <footer className="border-t border-border py-4 text-center text-muted text-xs">
-        Friend-group only. Not affiliated with FIFA.
+        <NavLink to="/contact" className="hover:text-gold">Contact</NavLink>
+        <span className="mx-2">·</span>
+        Not affiliated with FIFA.
       </footer>
     </div>
   );

@@ -4,6 +4,8 @@ import useBracket from '../hooks/useBracket.js';
 import Countdown from '../components/Countdown.jsx';
 import SaveIndicator from '../components/SaveIndicator.jsx';
 import AwardsCard from '../components/AwardsCard.jsx';
+import ScoreCard from '../components/ScoreCard.jsx';
+import GroupCTA from '../components/GroupCTA.jsx';
 import GroupStageTab from './bracketTabs/GroupStageTab.jsx';
 import ThirdsTab from './bracketTabs/ThirdsTab.jsx';
 import KnockoutTab from './bracketTabs/KnockoutTab.jsx';
@@ -44,6 +46,10 @@ export default function Bracket() {
         <Countdown target={GROUP_LOCK_UTC} label="Group stage locks in" />
         <Countdown target={KO_LOCK_UTC}    label="Knockout bracket locks in" />
       </div>
+
+      <ScoreCard bracket={bracket} fixture={fixture} title="Your score" />
+
+      <GroupCTA userId={user?.id} />
 
       <AwardsCard bracket={bracket} setBracket={setBracket} locked={gLocked} />
 

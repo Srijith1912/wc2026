@@ -16,7 +16,7 @@ export default function Login() {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     setBusy(false);
     if (error) { setError(error.message); return; }
-    nav('/bracket');
+    nav('/');
   }
 
   async function reset() {

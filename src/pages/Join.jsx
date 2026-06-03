@@ -71,7 +71,7 @@ function JoinForm({ onSuccess }) {
 
   return (
     <form onSubmit={submit} className="space-y-3">
-      <p className="text-muted text-sm">Enter the secret passkey your friend gave you.</p>
+      <p className="text-muted text-sm">Enter the passkey you were given to join a private group.</p>
       <input className="input" placeholder="Group passkey" value={passkey} onChange={(e) => setPasskey(e.target.value)} required autoFocus />
       {err && <div className="text-sm text-red-400">{err}</div>}
       <button className="btn-primary w-full" disabled={busy}>{busy ? 'Joining…' : 'Join'}</button>
@@ -99,13 +99,13 @@ function CreateForm({ onSuccess }) {
 
   return (
     <form onSubmit={submit} className="space-y-3">
-      <p className="text-muted text-sm">Pick a name and a passkey. Share the passkey with friends so they can join.</p>
+      <p className="text-muted text-sm">Pick a name and a passkey, then share the passkey with anyone you want to invite.</p>
       <div>
         <span className="label block mb-1">Group name</span>
-        <input className="input" placeholder="e.g. The Boys" value={name} onChange={(e) => setName(e.target.value)} minLength={2} required />
+        <input className="input" placeholder="e.g. Office League" value={name} onChange={(e) => setName(e.target.value)} minLength={2} required />
       </div>
       <div>
-        <span className="label block mb-1">Passkey (your friends will use this to join)</span>
+        <span className="label block mb-1">Passkey (others use this to join)</span>
         <input className="input" placeholder="At least 4 characters" value={passkey} onChange={(e) => setPasskey(e.target.value)} minLength={4} required />
         <div className="text-xs text-muted mt-1">Passkey must be unique across all groups. Make it something memorable but not guessable.</div>
       </div>

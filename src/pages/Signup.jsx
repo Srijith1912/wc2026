@@ -13,16 +13,30 @@ export default function Signup() {
   async function submit(e) {
     e.preventDefault();
     setError(null); setBusy(true);
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: { data: { display_name: displayName } },
     });
     setBusy(false);
-    if (error) { setError(error.message); return; }
-    // If email confirmation is OFF in Supabase, user is signed in immediately.
-    // If ON, ask them to confirm via the email link, then log in.
-    nav('/join');
+    if (error) {
+      // Surface a friendly message for the common "email already exists" case.
+      if (/already (registered|exists)|already in use/i.test(error.message)) {
+        setError('That email is already registered. Try logging in instead.');
+      } else {
+        setError(error.message);
+      }
+      return;
+    }
+    // Supabase's enumeration protection: signing up with an email that already
+    // exists returns no error but an empty `identities` array. Treat that as
+    // "already taken" so two accounts can never share an email.
+    if (data?.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
+      setError('That email is already registered. Try logging in instead.');
+      return;
+    }
+    // Land on the home page; from there the player chooses where to go.
+    nav('/');
   }
 
   return (
@@ -31,7 +45,8 @@ export default function Signup() {
         <div className="text-center">
           <div className="display text-3xl text-gold">Create Account</div>
         </div>
-        <input className="input" placeholder="Display name (shown to your friends)" value={displayName} onChange={(e) => setDisplayName(e.target.value)} required />
+        <input className="input" placeholder="Display name (shown on the leaderboard)" value={displayName} onChange={(e) => setDisplayName(e.target.value)} required />
+        <p className="text-xs text-muted -mt-1">Your display name is public on the leaderboard, so pick something you're happy for others to see.</p>
         <input className="input" type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} required />
         <input className="input" type="password" placeholder="Password (min 6 chars)" value={password} onChange={(e) => setPassword(e.target.value)} minLength={6} required />
         {error && <div className="text-sm text-red-400">{error}</div>}

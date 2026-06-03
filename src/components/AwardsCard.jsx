@@ -22,7 +22,7 @@ export default function AwardsCard({ bracket, setBracket, locked, readOnly }) {
         <div className="text-xs text-muted">5 pts each · locks with group stage</div>
       </div>
       <p className="text-xs text-muted mb-3">
-        Type the player's name (any format — e.g. "Mbappé" or "Kylian Mbappe"). The group leader resolves ties at scoring time.
+        Enter each player's full name, including surname (for example, "Harry Kane"). Scoring ignores case and accents, so the common spelling is fine.
       </p>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         {AWARDS.map(({ key, label, hint }) => (
@@ -34,7 +34,7 @@ export default function AwardsCard({ bracket, setBracket, locked, readOnly }) {
               value={picks[key] || ''}
               onChange={(e) => set(key, e.target.value)}
               disabled={disabled}
-              placeholder="Player name"
+              placeholder="Player full name"
               maxLength={80}
               className="w-full px-2 py-1.5 rounded-md bg-black/30 border border-border text-sm text-white placeholder:text-muted/60 focus:outline-none focus:border-gold disabled:opacity-60 disabled:cursor-not-allowed"
             />

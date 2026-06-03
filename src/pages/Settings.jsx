@@ -28,12 +28,13 @@ export default function Settings() {
   }
 
   async function resetBracket() {
-    if (!confirm('Reset your entire bracket? This wipes ALL of your picks (group stage, best-thirds, and every knockout round). This cannot be undone.')) return;
+    if (!confirm('Reset your entire bracket? This wipes ALL of your picks (group stage, best-thirds, every knockout round, and your award picks). This cannot be undone.')) return;
     setBusy(true); setMsg(null); setErr(null);
     const { error } = await supabase.from('brackets').update({
       group_picks: {},
       third_place_bets: [],
       knockout_picks: {},
+      awards_picks: {},
       updated_at: new Date().toISOString(),
     }).eq('user_id', user.id);
     setBusy(false);
@@ -61,7 +62,7 @@ export default function Settings() {
 
       <div className="card space-y-3 border-red-700/40">
         <div className="label text-red-300">Danger zone</div>
-        <p className="text-sm text-muted">Reset every pick you've made — group winners, runners-up, best-thirds, all knockout rounds. Cannot be undone. Useful while testing.</p>
+        <p className="text-sm text-muted">Reset every pick you've made — group winners, runners-up, best-thirds, all knockout rounds, and award picks. Cannot be undone.</p>
         <button onClick={resetBracket} disabled={busy} className="btn-secondary w-full border-red-700/40 text-red-300 hover:border-red-500">
           {busy ? 'Resetting…' : 'Reset my bracket'}
         </button>

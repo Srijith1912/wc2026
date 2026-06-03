@@ -4,10 +4,12 @@ import Layout from './components/Layout.jsx';
 import Landing from './pages/Landing.jsx';
 import Login from './pages/Login.jsx';
 import Signup from './pages/Signup.jsx';
+import Contact from './pages/Contact.jsx';
 import Join from './pages/Join.jsx';
 import Bracket from './pages/Bracket.jsx';
 import GroupPage from './pages/Group.jsx';
 import MemberBracket from './pages/MemberBracket.jsx';
+import Leaderboard from './pages/Leaderboard.jsx';
 import HowToPlay from './pages/HowToPlay.jsx';
 import Settings from './pages/Settings.jsx';
 import Admin from './pages/Admin.jsx';
@@ -28,18 +30,19 @@ function AdminOnly({ children }) {
 }
 
 export default function App() {
-  const { user } = useAuth();
   return (
     <Routes>
-      <Route path="/" element={user ? <Navigate to="/bracket" replace /> : <Landing />} />
+      <Route path="/" element={<Landing />} />
       <Route path="/login"  element={<Login />} />
       <Route path="/signup" element={<Signup />} />
+      <Route path="/contact" element={<Contact />} />
 
       <Route element={<Protected><Layout /></Protected>}>
         <Route path="/join"            element={<Join />} />
         <Route path="/bracket"         element={<Bracket />} />
         <Route path="/group"           element={<GroupPage />} />
         <Route path="/group/:userId"   element={<MemberBracket />} />
+        <Route path="/leaderboard"     element={<Leaderboard />} />
         <Route path="/how-to-play"     element={<HowToPlay />} />
         <Route path="/settings"        element={<Settings />} />
         <Route path="/admin"           element={<AdminOnly><Admin /></AdminOnly>} />

@@ -23,3 +23,16 @@ select.select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://w
 
 /* tap targets on mobile */
 button, [role="button"], select, input { min-height: 40px; }
+
+/* landing tagline fade-in on swap */
+@keyframes fadeInUp { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+.animate-fade-in { animation: fadeInUp 0.6s ease-out; }
+
+/* landing flag ribbon — seamless infinite scroll (track is duplicated 2x).
+   Decorative brand element, so it keeps scrolling even when the OS requests
+   reduced motion (which is otherwise respected elsewhere). */
+@keyframes marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+.animate-marquee { animation: marquee 45s linear infinite; will-change: transform; }
+
+/* soft gold glow behind the hero trophy */
+.trophy-glow { filter: drop-shadow(0 0 40px rgba(212, 175, 55, 0.45)); }

@@ -17,7 +17,6 @@ set search_path = public
 as $$
   select lower(coalesce(auth.jwt() ->> 'email', '')) in (
     'mulupurisrijith@gmail.com'
-    -- , 'max@example.com'
   );
 $$;
 
@@ -64,6 +63,16 @@ create table if not exists public.profiles (
   created_at   timestamptz not null default now()
 );
 
+-- Backfill: every auth user must have a profile row (brackets + reviews FK to
+-- it). Accounts created before the handle_new_user() trigger existed can be
+-- missing one — that's what causes "violates foreign key constraint
+-- reviews_user_id_fkey" / brackets errors. Idempotent: second runs match none.
+insert into public.profiles (id, display_name)
+select u.id, coalesce(u.raw_user_meta_data ->> 'display_name', split_part(u.email, '@', 1))
+from auth.users u
+left join public.profiles p on p.id = u.id
+where p.id is null;
+
 create table if not exists public.groups (
   id         uuid primary key default gen_random_uuid(),
   name       text not null,
@@ -106,13 +115,30 @@ create table if not exists public.brackets (
 -- Safe to re-run on an older DB that pre-dates awards_picks.
 alter table public.brackets add column if not exists awards_picks jsonb not null default '{}'::jsonb;
 
+-- Safety net: ensure every profile has an (empty) bracket row to edit.
+-- Idempotent — second runs match none.
+insert into public.brackets (user_id)
+select p.id from public.profiles p
+left join public.brackets b on b.user_id = p.id
+where b.user_id is null;
+
 create table if not exists public.fixture_state (
   id                       int primary key default 1,
   group_results            jsonb not null default '{}'::jsonb,
   third_place_assignments  jsonb not null default '{}'::jsonb,
+  knockout_results         jsonb not null default '{}'::jsonb,
+  awards_results           jsonb not null default '{}'::jsonb,
   updated_at               timestamptz not null default now(),
   constraint singleton check (id = 1)
 );
+
+-- Safe to re-run on an older DB that pre-dates the scoring columns. These hold
+-- the ACTUAL knockout winners (matchId -> team code, incl. FINAL + THIRD_PLACE)
+-- and the actual award winners (golden_ball / golden_boot / golden_glove ->
+-- player name). The admin fills these in on the Admin page; scoring.js compares
+-- every user's bracket against them.
+alter table public.fixture_state add column if not exists knockout_results jsonb not null default '{}'::jsonb;
+alter table public.fixture_state add column if not exists awards_results   jsonb not null default '{}'::jsonb;
 
 insert into public.fixture_state (id) values (1)
 on conflict (id) do nothing;
@@ -126,11 +152,15 @@ alter table public.group_members  enable row level security;
 alter table public.brackets       enable row level security;
 alter table public.fixture_state  enable row level security;
 
--- profiles: any signed-in user can read profiles of people in any of their groups,
--- can read/update their own profile, cannot delete.
+-- profiles: any signed-in user can read profiles of people in any of their
+-- groups, plus their own; admins can read all. Display names are NOT globally
+-- readable — the leaderboard surfaces names via the leaderboard() RPC (security
+-- definer), so a bracket/profile is only directly visible to group-mates.
 drop policy if exists profiles_select on public.profiles;
 create policy profiles_select on public.profiles for select using (
-  id = auth.uid() or public.shares_group_with(profiles.id)
+  id = auth.uid()
+  or public.shares_group_with(profiles.id)
+  or public.is_admin()
 );
 
 drop policy if exists profiles_insert on public.profiles;
@@ -184,10 +214,15 @@ create policy gm_delete on public.group_members for delete using (
   or public.is_admin()
 );
 
--- brackets: user can read+write their own; can read others' iff they share a group.
+-- brackets: a user can read+write their own, and read others' ONLY if they
+-- share a group (so you can see your group-mates' picks). Brackets are never
+-- world-readable — the leaderboard ranks everyone without exposing picks, via
+-- the leaderboard() RPC which returns names + points only. Admins can read all.
 drop policy if exists brackets_select on public.brackets;
 create policy brackets_select on public.brackets for select using (
-  user_id = auth.uid() or public.shares_group_with(brackets.user_id)
+  user_id = auth.uid()
+  or public.shares_group_with(brackets.user_id)
+  or public.is_admin()
 );
 
 drop policy if exists brackets_upsert on public.brackets;
@@ -201,6 +236,70 @@ create policy fixture_select on public.fixture_state for select using (auth.uid(
 
 drop policy if exists fixture_admin_write on public.fixture_state;
 create policy fixture_admin_write on public.fixture_state for all using (public.is_admin()) with check (public.is_admin());
+
+------------------------------------------------------------
+-- REVIEWS / RATINGS (shown on the public landing page)
+-- One review per user. New + edited reviews start unapproved; only the admin
+-- can flip `approved`, so nothing user-written appears publicly until the admin
+-- has seen it. Approved reviews are readable by EVERYONE, including logged-out
+-- visitors (the anon role) — that's what lets the landing page show them.
+------------------------------------------------------------
+create table if not exists public.reviews (
+  user_id    uuid primary key references public.profiles(id) on delete cascade,
+  rating     int  not null check (rating between 1 and 5),
+  body       text not null check (char_length(btrim(body)) between 1 and 500),
+  approved   boolean not null default false,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+alter table public.reviews enable row level security;
+
+-- Read: approved reviews are public; you can always see your own; admin sees all.
+drop policy if exists reviews_select on public.reviews;
+create policy reviews_select on public.reviews for select using (
+  approved or user_id = auth.uid() or public.is_admin()
+);
+
+-- Write: a user manages only their own row; admin can manage any (to approve).
+drop policy if exists reviews_insert on public.reviews;
+create policy reviews_insert on public.reviews for insert with check (user_id = auth.uid());
+drop policy if exists reviews_update on public.reviews;
+create policy reviews_update on public.reviews for update
+  using (user_id = auth.uid() or public.is_admin())
+  with check (user_id = auth.uid() or public.is_admin());
+drop policy if exists reviews_delete on public.reviews;
+create policy reviews_delete on public.reviews for delete
+  using (user_id = auth.uid() or public.is_admin());
+
+-- The anon (logged-out) role needs an explicit SELECT grant to read approved
+-- reviews on the landing page; authenticated users get full CRUD (still gated
+-- by the RLS policies above).
+grant select on public.reviews to anon;
+grant select, insert, update, delete on public.reviews to authenticated;
+
+-- Guard: non-admin writes always land as unapproved (a user can't self-approve,
+-- and editing an already-approved review sends it back to the moderation queue).
+-- Also keeps updated_at honest.
+create or replace function public.reviews_guard()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if not public.is_admin() then
+    new.approved := false;
+  end if;
+  new.updated_at := now();
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_reviews_guard on public.reviews;
+create trigger trg_reviews_guard
+  before insert or update on public.reviews
+  for each row execute function public.reviews_guard();
 
 ------------------------------------------------------------
 -- RPC: join_group(passkey)
@@ -411,6 +510,94 @@ drop trigger if exists trg_enforce_bracket_locks on public.brackets;
 create trigger trg_enforce_bracket_locks
   before update on public.brackets
   for each row execute function public.enforce_bracket_locks();
+
+------------------------------------------------------------
+-- LEADERBOARD (server-side scoring)
+-- Scores are computed in Postgres and only the top 10 (+ the caller's own row)
+-- are returned — names + points, never anyone's picks. This is what keeps the
+-- leaderboard cheap at scale: the browser downloads ~11 tiny rows instead of
+-- every user's full bracket. Mirrors the points table in src/lib/scoring.js;
+-- if you ever change the bracket structure or points, update BOTH.
+------------------------------------------------------------
+
+-- Name normaliser for award matching: lowercase, strip accents, collapse any
+-- non-alphanumeric run to a single space, trim. Mirrors normName() in
+-- src/lib/scoring.js so the "Your score" card and the leaderboard agree.
+create extension if not exists unaccent;
+
+create or replace function public.norm_name(p text)
+returns text
+language sql
+stable
+set search_path = public, extensions, pg_temp
+as $$
+  select btrim(regexp_replace(lower(unaccent(coalesce(p, ''))), '[^a-z0-9]+', ' ', 'g'));
+$$;
+
+create or replace function public.leaderboard()
+returns table (user_id uuid, display_name text, points int, rank int, is_self boolean)
+language sql
+stable
+security definer
+set search_path = public, extensions, pg_temp
+as $$
+  with f as (
+    select * from public.fixture_state where id = 1
+  ),
+  scored as (
+    select
+      b.user_id,
+      p.display_name,
+      (
+          -- group winners (1 pt) + runners-up (1 pt)
+          (select count(*) from unnest(array['A','B','C','D','E','F','G','H','I','J','K','L']) as g
+             where b.group_picks -> g ->> 'winner' = f.group_results -> g ->> 'winner')
+        + (select count(*) from unnest(array['A','B','C','D','E','F','G','H','I','J','K','L']) as g
+             where b.group_picks -> g ->> 'runnerUp' = f.group_results -> g ->> 'runnerUp')
+          -- best-8 thirds (2 pts each): bet teams that are among the assigned thirds
+        + (select count(*) from unnest(coalesce(b.third_place_bets, '{}'::text[])) as t
+             where t in (select v.value from jsonb_each_text(f.third_place_assignments) v
+                          where coalesce(v.value, '') <> '')) * 2
+          -- knockout rounds (R32 2 / R16 3 / QF 5 / SF 8)
+        + (select count(*) from unnest(array['R32_L1','R32_L2','R32_L3','R32_L4','R32_L5','R32_L6','R32_L7','R32_L8',
+                                             'R32_R1','R32_R2','R32_R3','R32_R4','R32_R5','R32_R6','R32_R7','R32_R8']) as m
+             where b.knockout_picks ->> m = f.knockout_results ->> m) * 2
+        + (select count(*) from unnest(array['R16_L1','R16_L2','R16_L3','R16_L4','R16_R1','R16_R2','R16_R3','R16_R4']) as m
+             where b.knockout_picks ->> m = f.knockout_results ->> m) * 3
+        + (select count(*) from unnest(array['QF_L1','QF_L2','QF_R1','QF_R2']) as m
+             where b.knockout_picks ->> m = f.knockout_results ->> m) * 5
+        + (select count(*) from unnest(array['SF_L','SF_R']) as m
+             where b.knockout_picks ->> m = f.knockout_results ->> m) * 8
+          -- 3rd-place playoff (10) + champion (15)
+        + (case when b.knockout_picks ->> 'THIRD_PLACE' = f.knockout_results ->> 'THIRD_PLACE' then 10 else 0 end)
+        + (case when b.knockout_picks ->> 'FINAL' = f.knockout_results ->> 'FINAL' then 15 else 0 end)
+          -- individual awards (5 pts each)
+        + (select count(*) from unnest(array['golden_ball','golden_boot','golden_glove']) as k
+             where public.norm_name(f.awards_results ->> k) <> ''
+               and public.norm_name(b.awards_picks ->> k) = public.norm_name(f.awards_results ->> k)) * 5
+      )::int as points
+    from public.brackets b
+    join public.profiles p on p.id = b.user_id
+    cross join f
+  ),
+  ranked as (
+    select
+      s.*,
+      (dense_rank() over (order by s.points desc))::int                         as rank,
+      (row_number() over (order by s.points desc, lower(s.display_name)))::int   as rn
+    from scored s
+  )
+  select r.user_id, r.display_name, r.points, r.rank, (r.user_id = auth.uid()) as is_self
+  from ranked r
+  -- Leaderboard stays hidden until the knockout stage begins (admins preview).
+  where (now() >= timestamptz '2026-06-28 19:00:00+00' or public.is_admin())
+    -- top 10 rows (capped by row_number so an all-tied field can't return
+    -- everyone), plus the caller's own row if they're further down.
+    and (r.rn <= 10 or r.user_id = auth.uid())
+  order by r.rn asc;
+$$;
+
+grant execute on function public.leaderboard() to authenticated;
 
 ------------------------------------------------------------
 -- Example: create the first group (run manually as admin)
