@@ -35,9 +35,31 @@ export const POINTS = {
   award: 5,
 };
 
-export const MAX_TOTAL = 172;
+export const MAX_TOTAL = 172;          // bracket only
+
+// Group-stage match prediction mini-game: 72 matches, 0.5 pts each.
+export const MATCH_POINT = 0.5;
+export const MATCH_GAME_COUNT = 72;
+export const MATCH_GAME_MAX = MATCH_GAME_COUNT * MATCH_POINT;   // 36
+export const COMBINED_MAX = MAX_TOTAL + MATCH_GAME_MAX;         // 208
 
 export const AWARD_KEYS = ['golden_ball', 'golden_boot', 'golden_glove'];
+
+// Score the match-prediction game. `predictions` is { matchId: pick } where a
+// pick is a team code or 'DRAW'; `matches` is the group_matches rows (each with
+// id + result). Returns { points, correct, decided } — `decided` is how many
+// matches have a result entered (for "X / Y correct" displays).
+export function scoreMatches(predictions, matches) {
+  const preds = predictions || {};
+  let correct = 0;
+  let decided = 0;
+  for (const m of (matches || [])) {
+    if (!m.result) continue;
+    decided++;
+    if (preds[m.id] && preds[m.id] === m.result) correct++;
+  }
+  return { points: correct * MATCH_POINT, correct, decided };
+}
 
 // Awards are free-text; match case-insensitively and ignore surrounding
 // whitespace + internal accents/punctuation differences ("Mbappé" === "mbappe").

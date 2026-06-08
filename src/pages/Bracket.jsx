@@ -5,6 +5,7 @@ import Countdown from '../components/Countdown.jsx';
 import SaveIndicator from '../components/SaveIndicator.jsx';
 import AwardsCard from '../components/AwardsCard.jsx';
 import ScoreCard from '../components/ScoreCard.jsx';
+import useMatchStats from '../hooks/useMatchStats.js';
 import GroupCTA from '../components/GroupCTA.jsx';
 import GroupStageTab from './bracketTabs/GroupStageTab.jsx';
 import ThirdsTab from './bracketTabs/ThirdsTab.jsx';
@@ -27,6 +28,7 @@ export default function Bracket() {
   const { user } = useAuth();
   const [tab, setTab] = useState('GROUPS');
   const { loading, bracket, fixture, setBracket, saving, savedAt, error } = useBracket(user?.id);
+  const matchStats = useMatchStats(user?.id);
 
   const gLocked = groupLocked();
   const kLocked = knockoutLocked();
@@ -47,7 +49,7 @@ export default function Bracket() {
         <Countdown target={KO_LOCK_UTC}    label="Knockout bracket locks in" />
       </div>
 
-      <ScoreCard bracket={bracket} fixture={fixture} title="Your score" />
+      <ScoreCard bracket={bracket} fixture={fixture} matchStats={matchStats} title="Your total score" />
 
       <GroupCTA userId={user?.id} />
 

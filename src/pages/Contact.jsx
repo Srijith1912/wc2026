@@ -19,47 +19,32 @@ export default function Contact() {
   const { user } = useAuth();
 
   return (
-    <div className="min-h-screen flex flex-col">
-      <header className="border-b border-border">
-        <div className="max-w-2xl mx-auto px-4 py-3 flex items-center gap-3">
-          <Link to="/" className="display text-2xl text-gold tracking-wider">WC&nbsp;2026</Link>
-          <Link to={user ? '/bracket' : '/'} className="ml-auto btn-secondary text-sm">
-            ← Back{user ? ' to bracket' : ''}
-          </Link>
+    <div className="max-w-2xl mx-auto space-y-8">
+      <section>
+        <div className="display text-3xl text-gold">Get in touch</div>
+        <p className="text-muted text-sm mt-2">
+          Found a bug, have a question, or want to share feedback? Send us a message and we'll get
+          back to you.
+        </p>
+        <ContactForm defaultEmail={user?.email || ''} />
+        <div className="text-sm text-muted mt-3">
+          Prefer email? Write to{' '}
+          <a href={`mailto:${ADMIN_EMAIL}`} className="text-white hover:text-gold">{ADMIN_EMAIL}</a>.
         </div>
-      </header>
+      </section>
 
-      <main className="flex-1 max-w-2xl mx-auto w-full px-4 py-8 space-y-8">
-        <section>
-          <div className="display text-3xl text-gold">Get in touch</div>
-          <p className="text-muted text-sm mt-2">
-            Found a bug, have a question, or want to share feedback? Send us a message and we'll get
-            back to you.
-          </p>
-          <ContactForm defaultEmail={user?.email || ''} />
-          <div className="text-sm text-muted mt-3">
-            Prefer email? Write to{' '}
-            <a href={`mailto:${ADMIN_EMAIL}`} className="text-white hover:text-gold">{ADMIN_EMAIL}</a>.
+      <section className="border-t border-border pt-8">
+        <div className="display text-2xl text-gold mb-1">Leave a review</div>
+        <p className="text-muted text-sm mb-4">
+          Enjoying the game? Rate it and your review may appear on our home page.
+        </p>
+        {user ? <ReviewForm userId={user.id} /> : (
+          <div className="card text-sm text-muted">
+            <Link to="/login" className="text-gold hover:underline">Log in</Link> or{' '}
+            <Link to="/signup" className="text-gold hover:underline">create an account</Link> to leave a review.
           </div>
-        </section>
-
-        <section className="border-t border-border pt-8">
-          <div className="display text-2xl text-gold mb-1">Leave a review</div>
-          <p className="text-muted text-sm mb-4">
-            Enjoying the game? Rate it and your review may appear on our home page.
-          </p>
-          {user ? <ReviewForm userId={user.id} /> : (
-            <div className="card text-sm text-muted">
-              <Link to="/login" className="text-gold hover:underline">Log in</Link> or{' '}
-              <Link to="/signup" className="text-gold hover:underline">create an account</Link> to leave a review.
-            </div>
-          )}
-        </section>
-      </main>
-
-      <footer className="border-t border-border py-6 text-center text-muted text-xs">
-        Not affiliated with FIFA.
-      </footer>
+        )}
+      </section>
     </div>
   );
 }

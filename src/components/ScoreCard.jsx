@@ -1,22 +1,30 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { scoreBracket, MAX_TOTAL } from '../lib/scoring.js';
+import { scoreBracket, MAX_TOTAL, MATCH_GAME_MAX, MATCH_GAME_COUNT, COMBINED_MAX } from '../lib/scoring.js';
 
-// Shows a bracket's running score + an expandable per-category breakdown.
-// Works for the signed-in user's own bracket (Bracket page) and for any
-// member's bracket (MemberBracket). Pass `title` to relabel.
+// Shows a player's running TOTAL score + an expandable per-category breakdown.
+// Total = bracket score (out of 172) + group-stage match predictions (out of 36),
+// for a combined 208. Pass `matchStats` ({ points, correct, decided }) to include
+// the match game; omit it to show bracket-only.
 //
-// `scoringLive` is true once the admin has entered ANY result. Before that the
-// card just explains scoring hasn't started yet (avoids a lonely "0 pts").
-export default function ScoreCard({ bracket, fixture, title = 'Your score', showLeaderboardLink = true }) {
+// `scoringLive` is true once any result has been entered (bracket or matches).
+export default function ScoreCard({ bracket, fixture, matchStats = null, title = 'Your score', showLeaderboardLink = true }) {
   const [open, setOpen] = useState(false);
-  const { total, lines } = scoreBracket(bracket, fixture);
+  const { total: bracketTotal, lines } = scoreBracket(bracket, fixture);
+
+  const hasMatches = !!matchStats;
+  const matchPoints = matchStats?.points || 0;
+  const total = bracketTotal + matchPoints;
+  const maxTotal = hasMatches ? COMBINED_MAX : MAX_TOTAL;
 
   const scoringLive =
     Object.keys(fixture?.group_results || {}).length > 0 ||
     Object.keys(fixture?.knockout_results || {}).length > 0 ||
     Object.values(fixture?.third_place_assignments || {}).some(Boolean) ||
-    Object.values(fixture?.awards_results || {}).some(Boolean);
+    Object.values(fixture?.awards_results || {}).some(Boolean) ||
+    (matchStats?.decided || 0) > 0;
+
+  const fmt = (n) => (Number.isInteger(n) ? String(n) : n.toFixed(1));
 
   return (
     <div className="card mb-4">
@@ -25,11 +33,11 @@ export default function ScoreCard({ bracket, fixture, title = 'Your score', show
           <div className="label">{title}</div>
           {scoringLive ? (
             <div className="display text-3xl text-gold tabular-nums">
-              {total}<span className="text-muted text-lg"> / {MAX_TOTAL} pts</span>
+              {fmt(total)}<span className="text-muted text-lg"> / {maxTotal} pts</span>
             </div>
           ) : (
             <div className="text-sm text-muted mt-1">
-              Scoring starts once the group stage ends and the admin enters results.
+              Scoring starts once games are played and results are entered.
             </div>
           )}
         </div>
@@ -58,10 +66,20 @@ export default function ScoreCard({ bracket, fixture, title = 'Your score', show
                 </td>
               </tr>
             ))}
+            {hasMatches && (
+              <tr className="border-t border-border/60">
+                <td className="text-muted">Group-stage matches</td>
+                <td className="text-right tabular-nums text-muted">{matchStats.correct}/{MATCH_GAME_COUNT}</td>
+                <td className="text-right tabular-nums w-16">
+                  <span className={matchPoints > 0 ? 'text-gold' : 'text-muted'}>{fmt(matchPoints)}</span>
+                  <span className="text-muted/60"> / {MATCH_GAME_MAX}</span>
+                </td>
+              </tr>
+            )}
             <tr className="border-t border-border font-semibold">
               <td className="text-white">Total</td>
               <td></td>
-              <td className="text-right tabular-nums text-gold">{total} / {MAX_TOTAL}</td>
+              <td className="text-right tabular-nums text-gold">{fmt(total)} / {maxTotal}</td>
             </tr>
           </tbody>
         </table>

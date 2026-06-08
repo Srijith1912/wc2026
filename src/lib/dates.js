@@ -1,5 +1,11 @@
-// Deadlines. Arizona observes MST (UTC-7) year-round, so 12:00 PM MST = 19:00 UTC.
-export const GROUP_LOCK_UTC = new Date('2026-06-11T19:00:00Z');
+// Deadlines are fixed instants in UTC; the UI renders them in each viewer's
+// own local time (see fmtDate / the Countdown component). Arizona is on MST
+// (UTC-7, no daylight saving), so "midnight MST" = 07:00 UTC the next day.
+//   GROUP_LOCK (group winners/runners-up, best-8 thirds, awards):
+//     June 17 midnight MST  =  2026-06-18 00:00 MST  =  2026-06-18T07:00:00Z
+//   KO_LOCK (knockout bracket R32 -> Final), at the first Round-of-32 kickoff:
+//     June 28 12:00 PM MST  =  2026-06-28T19:00:00Z
+export const GROUP_LOCK_UTC = new Date('2026-06-18T07:00:00Z');
 export const KO_LOCK_UTC    = new Date('2026-06-28T19:00:00Z');
 
 // The leaderboard stays hidden until every bracket is frozen — otherwise people
@@ -29,5 +35,14 @@ export function fmtDate(date) {
   return date.toLocaleString('en-US', {
     month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit',
     timeZoneName: 'short',
+  });
+}
+
+// Full deadline label in the VIEWER's local time + zone, e.g.
+// "Wed, Jun 17, 2026, 11:00 PM PDT". Uses the browser's locale/zone.
+export function fmtDeadline(date) {
+  return date.toLocaleString(undefined, {
+    weekday: 'short', month: 'short', day: 'numeric', year: 'numeric',
+    hour: 'numeric', minute: '2-digit', timeZoneName: 'short',
   });
 }

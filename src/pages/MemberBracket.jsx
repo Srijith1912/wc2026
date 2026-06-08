@@ -8,6 +8,7 @@ import KnockoutTab from './bracketTabs/KnockoutTab.jsx';
 import FullBracketTab from './bracketTabs/FullBracketTab.jsx';
 import AwardsCard from '../components/AwardsCard.jsx';
 import ScoreCard from '../components/ScoreCard.jsx';
+import useMatchStats from '../hooks/useMatchStats.js';
 
 const TABS = [
   { id: 'GROUPS', label: 'Group Stage' },
@@ -26,6 +27,7 @@ export default function MemberBracket() {
   const [name, setName] = useState('');
   const [tab, setTab] = useState('GROUPS');
   const { loading, bracket, fixture } = useBracket(userId, { readOnly: true });
+  const matchStats = useMatchStats(userId);
 
   useEffect(() => {
     if (!userId) return;
@@ -47,7 +49,7 @@ export default function MemberBracket() {
         <button onClick={() => nav(-1)} className="btn-secondary text-sm">← Back</button>
       </div>
 
-      <ScoreCard bracket={bracket} fixture={fixture} title={`${name || 'Player'}'s score`} showLeaderboardLink={false} />
+      <ScoreCard bracket={bracket} fixture={fixture} matchStats={matchStats} title={`${name || 'Player'}'s score`} showLeaderboardLink={false} />
 
       <AwardsCard bracket={bracket} setBracket={setBracket} locked readOnly />
 

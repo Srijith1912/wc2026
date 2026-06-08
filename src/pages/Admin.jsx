@@ -18,6 +18,7 @@ const VIEWS = [
   { id: 'GROUPS',  label: 'Group & Thirds' },
   { id: 'KO',      label: 'Knockout Results' },
   { id: 'AWARDS',  label: 'Award Winners' },
+  { id: 'MATCHES', label: 'Match Results' },
   { id: 'REVIEWS', label: 'Reviews' },
 ];
 
@@ -147,7 +148,7 @@ export default function Admin() {
     return out;
   });
 
-  const showSaveBar = view !== 'REVIEWS';
+  const showSaveBar = view !== 'REVIEWS' && view !== 'MATCHES';
 
   return (
     <div className="space-y-6">
@@ -287,6 +288,8 @@ export default function Admin() {
         </section>
       )}
 
+      {view === 'MATCHES' && <MatchResults />}
+
       {view === 'REVIEWS' && <ReviewsModeration />}
 
       {showSaveBar && (
@@ -300,6 +303,85 @@ export default function Admin() {
         </div>
       )}
     </div>
+  );
+}
+
+// ─── Group-stage match results (each change saves immediately) ──────────────
+function MatchResults() {
+  const [matches, setMatches] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [savingId, setSavingId] = useState(null);
+  const [err, setErr] = useState(null);
+
+  async function load() {
+    setLoading(true); setErr(null);
+    const { data, error } = await supabase.from('group_matches').select('*').order('kickoff', { ascending: true });
+    if (error) setErr(error.message);
+    setMatches(data || []);
+    setLoading(false);
+  }
+  useEffect(() => { load(); }, []);
+
+  async function setResult(m, value) {
+    setSavingId(m.id); setErr(null);
+    const result = value || null;
+    const { error } = await supabase.from('group_matches').update({ result }).eq('id', m.id);
+    setSavingId(null);
+    if (error) setErr(error.message);
+    else setMatches((ms) => ms.map((x) => (x.id === m.id ? { ...x, result } : x)));
+  }
+
+  if (loading) return <div className="text-muted">Loading fixtures…</div>;
+
+  const entered = matches.filter((m) => m.result).length;
+
+  // Group by local calendar day (already sorted by kickoff).
+  const byDay = [];
+  for (const m of matches) {
+    const key = new Date(m.kickoff).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+    const last = byDay[byDay.length - 1];
+    if (last && last.key === key) last.items.push(m);
+    else byDay.push({ key, items: [m] });
+  }
+
+  return (
+    <section className="space-y-4">
+      <div>
+        <div className="display text-xl text-gold mb-1">Group-stage match results</div>
+        <p className="text-muted text-sm">
+          Set the actual outcome of each group game — each correct prediction scores players 0.5
+          points. Changes save automatically. ({entered} / {matches.length} entered)
+        </p>
+      </div>
+      {err && <div className="card border-red-700/40 text-red-300 text-sm">{err}</div>}
+
+      {byDay.map((day) => (
+        <div key={day.key}>
+          <div className="label mb-2">{day.key}</div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {day.items.map((m) => (
+              <div key={m.id} className="card flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="text-xs text-muted">Group {m.group_letter} · {new Date(m.kickoff).toLocaleString(undefined, { hour: 'numeric', minute: '2-digit' })}</div>
+                  <div className="text-sm text-white truncate">{teamLabel(m.team_a)} v {teamLabel(m.team_b)}</div>
+                </div>
+                <select
+                  className="select w-40 shrink-0"
+                  value={m.result || ''}
+                  disabled={savingId === m.id}
+                  onChange={(e) => setResult(m, e.target.value)}
+                >
+                  <option value="">— not played —</option>
+                  <option value={m.team_a}>{teamLabel(m.team_a)} win</option>
+                  <option value="DRAW">Draw</option>
+                  <option value={m.team_b}>{teamLabel(m.team_b)} win</option>
+                </select>
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </section>
   );
 }
 
