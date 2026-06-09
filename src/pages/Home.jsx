@@ -60,8 +60,10 @@ export default function Home() {
 
   return (
     <div>
-      {/* ─── First screen: the hero fills it and the flag ribbon is pinned to
-            the bottom, so nothing else shows until you scroll. ─── */}
+      {/* ─── First screen: hero centered, flag ribbon pinned to the bottom.
+            The hero is identical whether or not you're logged in (sign-up /
+            log-in live in the navbar + the CTA section below), so the layout
+            never shifts. ─── */}
       <div className="flex flex-col min-h-[calc(100vh_-_6rem)]">
         <section className="flex-1 flex flex-col items-center justify-center text-center py-6">
           <div className="text-xs tracking-[0.3em] text-muted uppercase mb-5">FIFA World Cup 2026 · USA · Canada · Mexico</div>
@@ -76,16 +78,11 @@ export default function Home() {
             Build your bracket, predict every match, and compete with players around the world.
             Free to play. Bragging rights guaranteed.
           </p>
-          {!user && (
-            <div className="mt-8 flex flex-col sm:flex-row gap-3 w-full max-w-md mx-auto">
-              <Link to="/signup" className="btn-primary flex-1 text-base py-3">Build your bracket</Link>
-              <Link to="/login" className="btn-secondary flex-1 text-base py-3">Log in</Link>
-            </div>
-          )}
         </section>
 
-        {/* Flag ribbon — last thing in the first screen */}
-        <div className="overflow-hidden border-y border-border bg-panel/30 py-3 -mx-3 sm:-mx-4">
+        {/* Flag ribbon — full-bleed across the whole viewport width, breaking
+            out of the centered content column. */}
+        <div className="overflow-hidden border-y border-border bg-panel/30 py-3 mx-[calc(50%_-_50vw)]">
           <div className="flex w-max animate-marquee gap-6 px-3">
             {[...flags, ...flags].map((iso, i) => (
               <img key={i} src={flagUrl(iso, 80)} alt="" aria-hidden loading="lazy"
@@ -108,6 +105,31 @@ export default function Home() {
               </div>
             ))}
           </div>
+        </section>
+
+        {/* ─── Quick navigation ─── */}
+        <section className="border-t border-border pt-10">
+          <h2 className="display text-2xl sm:text-3xl text-gold text-center mb-6">
+            {user ? 'Jump back in' : 'Explore'}
+          </h2>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {[
+              { to: '/bracket',     icon: '🗂️', title: 'Your Bracket',  body: 'Make your group, knockout, and award picks.' },
+              { to: '/leaderboard', icon: '🏆', title: 'Leaderboard',   body: 'See how you rank against everyone.' },
+              { to: '/group',       icon: '👥', title: 'Groups',        body: 'Compete with friends and chat.' },
+            ].map((l) => (
+              <Link key={l.to} to={l.to} className="card hover:border-gold transition flex items-start gap-3">
+                <span className="text-2xl leading-none shrink-0" aria-hidden>{l.icon}</span>
+                <span className="min-w-0">
+                  <span className="display text-lg text-gold block">{l.title}</span>
+                  <span className="text-muted text-sm">{l.body}</span>
+                </span>
+              </Link>
+            ))}
+          </div>
+          {!user && (
+            <p className="text-muted text-xs text-center mt-3">You'll be asked to log in or sign up first.</p>
+          )}
         </section>
 
         {reviews.length > 0 && (
