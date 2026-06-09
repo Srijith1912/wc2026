@@ -43,7 +43,8 @@ After the knockout deadline (June 28, 12:00 PM MST), the bracket is locked. No m
 
 ## Group leader tools
 Whoever creates a group starts as a **group leader**, marked with 👑. A group can have **multiple leaders**. Any leader can:
-- **Set visibility** — toggle the group **private** (passkey to join; members see each other's brackets) or **public** (listed on the Groups page for anyone to join with one click; brackets stay hidden between members)
+- **Set visibility** — toggle the group **private** (passkey to join) or **public** (listed on the Groups page for anyone to join with one click)
+- **Toggle bracket sharing** — independently turn on/off whether members can see each other's brackets and match picks
 - **Edit the group** — change its name and passkey (Group settings ⚙️)
 - **Add leaders** — promote another member to leader (👑 next to their name); both are then leaders
 - **Remove leaders** — demote a leader (a group always keeps at least one)

@@ -20,7 +20,7 @@ export default function GroupPage() {
     setErr(null);
     const { data: memberRows, error: e1 } = await supabase
       .from('group_members')
-      .select('group_id, groups(id, name, passkey, created_by, is_public)')
+      .select('group_id, groups(id, name, passkey, created_by, is_public, brackets_visible)')
       .eq('user_id', user.id);
     if (e1) { setErr(e1.message); setLoading(false); return; }
     if (!memberRows?.length) { setGroups([]); setLoading(false); return; }
@@ -41,6 +41,7 @@ export default function GroupPage() {
       name: r.groups?.name || r.group_id,
       passkey: r.groups?.passkey || '',
       isPublic: !!r.groups?.is_public,
+      bracketsVisible: r.groups?.brackets_visible !== false,
       members: byGroup[r.group_id] || [],
     })));
     setLoading(false);
@@ -144,13 +145,13 @@ export default function GroupPage() {
         <div className="grid grid-cols-1 md:grid-cols-[230px_1fr] gap-4">
           <div>
             <div className="label mb-2">Members ({selected.members.length})</div>
-            {selected.isPublic && (
-              <p className="text-xs text-muted mb-2">Brackets are hidden between members in public groups.</p>
+            {!selected.bracketsVisible && (
+              <p className="text-xs text-muted mb-2">Bracket viewing is turned off for this group.</p>
             )}
             <div className="space-y-1.5">
               {selected.members.map((m) => {
                 const isSelf = m.id === user.id;
-                const canOpen = isSelf || !selected.isPublic;   // no bracket peeking in public groups
+                const canOpen = isSelf || selected.bracketsVisible;   // gated by the group's bracket-sharing toggle
                 return (
                   <div key={m.id} className="flex items-center justify-between px-3 py-2 rounded-md border border-border">
                     {canOpen ? (
@@ -240,7 +241,7 @@ export default function GroupPage() {
       {publicGroups.length > 0 && (
         <div>
           <div className="display text-xl text-gold">Public groups</div>
-          <p className="text-muted text-sm mt-1 mb-3">Open groups anyone can join. Brackets stay private between members.</p>
+          <p className="text-muted text-sm mt-1 mb-3">Open groups anyone can join with one click.</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {publicGroups.map((g) => {
               const count = Number(g.member_count) || 0;
@@ -288,6 +289,14 @@ function GroupSettings({ group, onSaved }) {
     onSaved?.();
   }
 
+  async function toggleBrackets() {
+    setBusy(true); setMsg(null); setErr(null);
+    const { error } = await supabase.rpc('set_group_brackets_visible', { p_group_id: group.id, p_visible: !group.bracketsVisible });
+    setBusy(false);
+    if (error) { setErr(error.message); return; }
+    onSaved?.();
+  }
+
   async function save(e) {
     e.preventDefault();
     setBusy(true); setMsg(null); setErr(null);
@@ -323,6 +332,22 @@ function GroupSettings({ group, onSaved }) {
               className={`px-3 py-1.5 rounded-md text-sm border shrink-0
                 ${group.isPublic ? 'border-gold text-gold bg-gold/10' : 'border-border text-muted hover:text-white'}`}>
               {group.isPublic ? '🌐 Public' : '🔒 Private'}
+            </button>
+          </div>
+
+          <div className="flex items-center justify-between gap-3 border-t border-border pt-3">
+            <div className="min-w-0">
+              <div className="text-sm text-white">Bracket sharing</div>
+              <div className="text-xs text-muted">
+                {group.bracketsVisible
+                  ? 'On — members can view each other’s brackets and match picks.'
+                  : 'Off — members can’t see each other’s brackets or picks.'}
+              </div>
+            </div>
+            <button onClick={toggleBrackets} disabled={busy}
+              className={`px-3 py-1.5 rounded-md text-sm border shrink-0
+                ${group.bracketsVisible ? 'border-gold text-gold bg-gold/10' : 'border-border text-muted hover:text-white'}`}>
+              {group.bracketsVisible ? 'Shared' : 'Hidden'}
             </button>
           </div>
 

@@ -99,9 +99,14 @@ set created_by = (
 where created_by is null;
 
 -- Privacy: private (default) groups need the passkey to find/join and members
--- can see each other's brackets. Public groups are discoverable + open to join,
--- but members can NOT see each other's brackets. Safe to re-run.
+-- is_public controls DISCOVERABILITY/JOIN: private (default) needs the passkey;
+-- public is listed on the Groups page and joinable in one click. Safe to re-run.
 alter table public.groups add column if not exists is_public boolean not null default false;
+
+-- brackets_visible controls whether members can see EACH OTHER'S brackets +
+-- match picks. Independent of is_public — a leader toggles it per group.
+-- Defaults to true (the original behavior). Safe to re-run.
+alter table public.groups add column if not exists brackets_visible boolean not null default true;
 
 create table if not exists public.group_members (
   group_id  uuid not null references public.groups(id) on delete cascade,
@@ -140,10 +145,11 @@ $$;
 
 grant execute on function public.is_group_leader(uuid) to authenticated;
 
--- Like shares_group_with, but only counts PRIVATE groups. Used to gate
--- bracket / match-prediction visibility: sharing only a public group does NOT
--- let you see someone's picks.
-create or replace function public.shares_private_group_with(p_target uuid)
+-- Like shares_group_with, but only counts groups where bracket-sharing is ON
+-- (groups.brackets_visible). Used to gate who can see someone's bracket + match
+-- picks: you can only see them if you share a group that has bracket-sharing
+-- enabled. Independent of public/private.
+create or replace function public.shares_bracket_group_with(p_target uuid)
 returns boolean
 language sql
 stable
@@ -155,11 +161,14 @@ as $$
     from public.group_members gm1
     join public.group_members gm2 on gm1.group_id = gm2.group_id
     join public.groups g on g.id = gm1.group_id
-    where gm1.user_id = auth.uid() and gm2.user_id = p_target and g.is_public = false
+    where gm1.user_id = auth.uid() and gm2.user_id = p_target and g.brackets_visible
   );
 $$;
 
-grant execute on function public.shares_private_group_with(uuid) to authenticated;
+grant execute on function public.shares_bracket_group_with(uuid) to authenticated;
+-- NOTE: the old shares_private_group_with() is dropped at the very end of this
+-- file — only after brackets_select / mp_select are recreated to stop depending
+-- on it (otherwise the drop fails with a dependency error).
 
 create table if not exists public.brackets (
   user_id           uuid primary key references public.profiles(id) on delete cascade,
@@ -273,13 +282,13 @@ create policy gm_delete on public.group_members for delete using (
 );
 
 -- brackets: a user can read+write their own, and read others' ONLY if they
--- share a PRIVATE group (public-group members can't see each other's picks).
+-- share a group with bracket-sharing turned ON (groups.brackets_visible).
 -- Brackets are never world-readable — the leaderboard ranks everyone without
 -- exposing picks, via the leaderboard() RPC (names + points only). Admins read all.
 drop policy if exists brackets_select on public.brackets;
 create policy brackets_select on public.brackets for select using (
   user_id = auth.uid()
-  or public.shares_private_group_with(brackets.user_id)
+  or public.shares_bracket_group_with(brackets.user_id)
   or public.is_admin()
 );
 
@@ -527,6 +536,21 @@ begin
 end;
 $$;
 
+create or replace function public.set_group_brackets_visible(p_group_id uuid, p_visible boolean)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if auth.uid() is null then raise exception 'Not authenticated'; end if;
+  if not (public.is_group_leader(p_group_id) or public.is_admin()) then
+    raise exception 'Only a group leader can change this';
+  end if;
+  update public.groups set brackets_visible = p_visible where id = p_group_id;
+end;
+$$;
+
 create or replace function public.list_public_groups()
 returns table (id uuid, name text, member_count bigint, is_member boolean)
 language sql
@@ -560,9 +584,10 @@ begin
 end;
 $$;
 
-grant execute on function public.set_group_public(uuid, boolean) to authenticated;
-grant execute on function public.list_public_groups()            to authenticated;
-grant execute on function public.join_public_group(uuid)         to authenticated;
+grant execute on function public.set_group_public(uuid, boolean)            to authenticated;
+grant execute on function public.set_group_brackets_visible(uuid, boolean)  to authenticated;
+grant execute on function public.list_public_groups()                       to authenticated;
+grant execute on function public.join_public_group(uuid)                     to authenticated;
 
 ------------------------------------------------------------
 -- TRIGGER: keep every group with at least one leader. When a member leaves:
@@ -810,7 +835,7 @@ alter table public.match_predictions enable row level security;
 -- Read your own; group-mates can read each other's (like brackets); admin all.
 drop policy if exists mp_select on public.match_predictions;
 create policy mp_select on public.match_predictions for select using (
-  user_id = auth.uid() or public.shares_private_group_with(user_id) or public.is_admin()
+  user_id = auth.uid() or public.shares_bracket_group_with(user_id) or public.is_admin()
 );
 drop policy if exists mp_insert on public.match_predictions;
 create policy mp_insert on public.match_predictions for insert with check (user_id = auth.uid());
@@ -1055,6 +1080,14 @@ begin
     alter publication supabase_realtime add table public.messages;
   end if;
 end $$;
+
+------------------------------------------------------------
+-- Cleanup: drop the superseded private-only visibility helper. Done here, at
+-- the very end, so it runs AFTER brackets_select / mp_select have been
+-- recreated to use shares_bracket_group_with() — otherwise Postgres refuses
+-- with a "other objects depend on it" error. Safe / idempotent.
+------------------------------------------------------------
+drop function if exists public.shares_private_group_with(uuid);
 
 ------------------------------------------------------------
 -- Example: create the first group (run manually as admin)
