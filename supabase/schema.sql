@@ -98,6 +98,11 @@ set created_by = (
 )
 where created_by is null;
 
+-- Privacy: private (default) groups need the passkey to find/join and members
+-- can see each other's brackets. Public groups are discoverable + open to join,
+-- but members can NOT see each other's brackets. Safe to re-run.
+alter table public.groups add column if not exists is_public boolean not null default false;
+
 create table if not exists public.group_members (
   group_id  uuid not null references public.groups(id) on delete cascade,
   user_id   uuid not null references public.profiles(id) on delete cascade,
@@ -134,6 +139,27 @@ as $$
 $$;
 
 grant execute on function public.is_group_leader(uuid) to authenticated;
+
+-- Like shares_group_with, but only counts PRIVATE groups. Used to gate
+-- bracket / match-prediction visibility: sharing only a public group does NOT
+-- let you see someone's picks.
+create or replace function public.shares_private_group_with(p_target uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1
+    from public.group_members gm1
+    join public.group_members gm2 on gm1.group_id = gm2.group_id
+    join public.groups g on g.id = gm1.group_id
+    where gm1.user_id = auth.uid() and gm2.user_id = p_target and g.is_public = false
+  );
+$$;
+
+grant execute on function public.shares_private_group_with(uuid) to authenticated;
 
 create table if not exists public.brackets (
   user_id           uuid primary key references public.profiles(id) on delete cascade,
@@ -247,13 +273,13 @@ create policy gm_delete on public.group_members for delete using (
 );
 
 -- brackets: a user can read+write their own, and read others' ONLY if they
--- share a group (so you can see your group-mates' picks). Brackets are never
--- world-readable — the leaderboard ranks everyone without exposing picks, via
--- the leaderboard() RPC which returns names + points only. Admins can read all.
+-- share a PRIVATE group (public-group members can't see each other's picks).
+-- Brackets are never world-readable — the leaderboard ranks everyone without
+-- exposing picks, via the leaderboard() RPC (names + points only). Admins read all.
 drop policy if exists brackets_select on public.brackets;
 create policy brackets_select on public.brackets for select using (
   user_id = auth.uid()
-  or public.shares_group_with(brackets.user_id)
+  or public.shares_private_group_with(brackets.user_id)
   or public.is_admin()
 );
 
@@ -478,6 +504,65 @@ drop function if exists public.transfer_group_leader(uuid, uuid);
 grant execute on function public.add_group_leader(uuid, uuid)    to authenticated;
 grant execute on function public.remove_group_leader(uuid, uuid) to authenticated;
 grant execute on function public.update_group(uuid, text, text)  to authenticated;
+
+------------------------------------------------------------
+-- RPC: group privacy + public-group discovery/join
+--   set_group_public  — a leader flips a group between public and private
+--   list_public_groups — everyone can browse open groups (name + member count,
+--                        never the passkey)
+--   join_public_group  — one-click join for a public group (no passkey needed)
+------------------------------------------------------------
+create or replace function public.set_group_public(p_group_id uuid, p_is_public boolean)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if auth.uid() is null then raise exception 'Not authenticated'; end if;
+  if not (public.is_group_leader(p_group_id) or public.is_admin()) then
+    raise exception 'Only a group leader can change this';
+  end if;
+  update public.groups set is_public = p_is_public where id = p_group_id;
+end;
+$$;
+
+create or replace function public.list_public_groups()
+returns table (id uuid, name text, member_count bigint, is_member boolean)
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select g.id, g.name, count(gm.user_id) as member_count,
+         exists (select 1 from public.group_members m where m.group_id = g.id and m.user_id = auth.uid()) as is_member
+  from public.groups g
+  left join public.group_members gm on gm.group_id = g.id
+  where g.is_public
+  group by g.id, g.name
+  order by count(gm.user_id) desc, lower(g.name)
+  limit 100;
+$$;
+
+create or replace function public.join_public_group(p_group_id uuid)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if auth.uid() is null then raise exception 'Not authenticated'; end if;
+  if not exists (select 1 from public.groups where id = p_group_id and is_public) then
+    raise exception 'This group is not open to join';
+  end if;
+  insert into public.group_members (group_id, user_id) values (p_group_id, auth.uid())
+  on conflict do nothing;
+end;
+$$;
+
+grant execute on function public.set_group_public(uuid, boolean) to authenticated;
+grant execute on function public.list_public_groups()            to authenticated;
+grant execute on function public.join_public_group(uuid)         to authenticated;
 
 ------------------------------------------------------------
 -- TRIGGER: keep every group with at least one leader. When a member leaves:
@@ -725,7 +810,7 @@ alter table public.match_predictions enable row level security;
 -- Read your own; group-mates can read each other's (like brackets); admin all.
 drop policy if exists mp_select on public.match_predictions;
 create policy mp_select on public.match_predictions for select using (
-  user_id = auth.uid() or public.shares_group_with(user_id) or public.is_admin()
+  user_id = auth.uid() or public.shares_private_group_with(user_id) or public.is_admin()
 );
 drop policy if exists mp_insert on public.match_predictions;
 create policy mp_insert on public.match_predictions for insert with check (user_id = auth.uid());

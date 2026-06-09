@@ -89,7 +89,7 @@ export default function Home() {
           <div className="flex w-max animate-marquee gap-6 px-3">
             {[...flags, ...flags].map((iso, i) => (
               <img key={i} src={flagUrl(iso, 80)} alt="" aria-hidden loading="lazy"
-                className="h-7 w-auto rounded-sm shadow opacity-80 shrink-0" />
+                className="h-7 w-10 object-cover rounded-sm shadow opacity-80 shrink-0" />
             ))}
           </div>
         </div>
