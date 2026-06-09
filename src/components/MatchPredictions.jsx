@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase.js';
 import { teamLabel } from '../lib/teams.js';
-import { scoreMatches, MATCH_GAME_MAX } from '../lib/scoring.js';
+import { scoreMatches } from '../lib/scoring.js';
 import Flag from './Flag.jsx';
 
 const DRAW = 'DRAW';
@@ -44,7 +44,18 @@ export default function MatchPredictions({ currentUserId }) {
       setPreds(map);
       setLoading(false);
     })();
-    return () => { cancelled = true; };
+
+    // Live-update when the admin enters/changes a result: re-pull the fixtures
+    // so the counter and result badges reflect it without a refresh.
+    const channel = supabase
+      .channel('group-matches-live')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'group_matches' }, async () => {
+        const { data } = await supabase.from('group_matches').select('*').order('kickoff', { ascending: true });
+        if (!cancelled && data) setMatches(data);
+      })
+      .subscribe();
+
+    return () => { cancelled = true; supabase.removeChannel(channel); };
   }, [currentUserId]);
 
   // Running total is computed over ALL matches (not just the visible window).
@@ -87,7 +98,7 @@ export default function MatchPredictions({ currentUserId }) {
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div>
-          <div className="display text-2xl text-gold">Match Predictions</div>
+          <div className="display text-2xl text-gold">Group Stage Match Predictions</div>
           <p className="text-muted text-sm">
             Call the winner — or a draw — for every group game. 0.5 points each. Picks open 24 hours
             before kickoff and lock when the match starts.
@@ -95,11 +106,13 @@ export default function MatchPredictions({ currentUserId }) {
         </div>
         {currentUserId && (
           <div className="text-right shrink-0">
-            <div className="label">Your points</div>
+            <div className="label">Your record</div>
             <div className="display text-2xl text-gold tabular-nums">
-              {summary.points}<span className="text-muted text-base"> / {MATCH_GAME_MAX}</span>
+              {summary.correct}<span className="text-muted text-base"> / {summary.decided}</span>
             </div>
-            {summary.decided > 0 && <div className="text-xs text-muted">{summary.correct} of {summary.decided} correct</div>}
+            <div className="text-xs text-muted">
+              {summary.points} pts{summary.decided === 0 ? ' · no results yet' : ' so far'}
+            </div>
           </div>
         )}
       </div>

@@ -7,6 +7,7 @@ import AwardsCard from '../components/AwardsCard.jsx';
 import ScoreCard from '../components/ScoreCard.jsx';
 import useMatchStats from '../hooks/useMatchStats.js';
 import GroupCTA from '../components/GroupCTA.jsx';
+import MatchPredictions from '../components/MatchPredictions.jsx';
 import GroupStageTab from './bracketTabs/GroupStageTab.jsx';
 import ThirdsTab from './bracketTabs/ThirdsTab.jsx';
 import KnockoutTab from './bracketTabs/KnockoutTab.jsx';
@@ -44,7 +45,12 @@ export default function Bracket() {
 
   return (
     <div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+      {/* Group-stage match prediction game — first thing on the page. */}
+      <div className="mb-10">
+        <MatchPredictions currentUserId={user?.id || null} />
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
         <Countdown target={GROUP_LOCK_UTC} label="Group stage locks in" />
         <Countdown target={KO_LOCK_UTC}    label="Knockout bracket locks in" />
       </div>
@@ -53,7 +59,19 @@ export default function Bracket() {
 
       <GroupCTA userId={user?.id} />
 
-      <AwardsCard bracket={bracket} setBracket={setBracket} locked={gLocked} />
+      <div className="mb-6">
+        <AwardsCard bracket={bracket} setBracket={setBracket} locked={gLocked} />
+      </div>
+
+      {/* The bracket game itself — set apart so its points aren't confused with
+          the match predictions above. */}
+      <div className="border-t border-border pt-8 mb-4">
+        <div className="display text-2xl text-gold">Tournament Bracket</div>
+        <p className="text-muted text-sm">
+          Predict the group winners and runners-up, the best-8 thirds, the full knockout run, and the
+          award winners. Worth <b>172 points</b> — scored separately from your match predictions above.
+        </p>
+      </div>
 
       <div className="flex items-center justify-between mb-3 gap-2">
         <div className="flex flex-wrap gap-1.5">

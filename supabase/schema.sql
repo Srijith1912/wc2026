@@ -616,6 +616,18 @@ create policy group_matches_admin_write on public.group_matches for all
 grant select on public.group_matches to anon, authenticated;
 grant insert, update, delete on public.group_matches to authenticated;
 
+-- Realtime: push live updates when the admin enters a result, so the match
+-- prediction counter ticks up without a page refresh. Idempotent.
+do $$
+begin
+  if not exists (
+    select 1 from pg_publication_tables
+    where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'group_matches'
+  ) then
+    alter publication supabase_realtime add table public.group_matches;
+  end if;
+end $$;
+
 -- Seed / refresh the 72 fixtures. Times below are the published kickoff times
 -- in Pacific Daylight Time (UTC-7) converted to UTC (PDT + 7h). Re-running
 -- updates the schedule but NEVER clears an already-entered result.
