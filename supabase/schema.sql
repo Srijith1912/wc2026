@@ -955,10 +955,16 @@ as $$
       -- 3rd-place playoff (10) + champion (15)
     + (case when p_knockout_picks ->> 'THIRD_PLACE' = p_knockout_results ->> 'THIRD_PLACE' then 10 else 0 end)
     + (case when p_knockout_picks ->> 'FINAL' = p_knockout_results ->> 'FINAL' then 15 else 0 end)
-      -- individual awards (5 pts each)
+      -- individual awards (5 pts each): the result may list several accepted
+      -- spellings comma-separated ("Messi, Lionel Messi"); a legacy single name
+      -- is one variant. A pick scores if it matches ANY variant. Mirrors
+      -- awardVariants() in src/lib/scoring.js.
     + (select count(*) from unnest(array['golden_ball','golden_boot','golden_glove']) as k
-         where public.norm_name(p_awards_results ->> k) <> ''
-           and public.norm_name(p_awards_picks ->> k) = public.norm_name(p_awards_results ->> k)) * 5
+         where exists (
+           select 1 from unnest(string_to_array(p_awards_results ->> k, ',')) as variant
+            where public.norm_name(variant) <> ''
+              and public.norm_name(variant) = public.norm_name(p_awards_picks ->> k)
+         )) * 5
   )::int;
 $$;
 

@@ -295,8 +295,10 @@ export default function Admin() {
         <section>
           <div className="display text-xl text-gold mb-2">Award winners</div>
           <p className="text-muted text-sm mb-3">
-            Enter each winner's full name, including surname (for example, "Harry Kane"). Scoring
-            ignores case and accents, so the common spelling is fine.
+            Enter the winner's name. You can list several accepted spellings separated by
+            commas — for example <span className="text-white">Messi, Lionel Messi, Leo Messi</span> — and a
+            player scores if their pick matches <span className="text-white">any</span> of them. Case, accents,
+            and punctuation are ignored, so don't bother with those variations.
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             {AWARD_KEYS.map((key) => (
@@ -307,8 +309,8 @@ export default function Admin() {
                   type="text"
                   value={fx.awards_results[key] || ''}
                   onChange={(e) => setAward(key, e.target.value)}
-                  placeholder="Player full name"
-                  maxLength={80}
+                  placeholder="e.g. Messi, Lionel Messi"
+                  maxLength={200}
                   className="w-full px-2 py-1.5 rounded-md bg-black/30 border border-border text-sm text-white placeholder:text-muted/60 focus:outline-none focus:border-gold"
                 />
               </label>

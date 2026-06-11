@@ -72,6 +72,20 @@ function normName(s) {
     .trim();
 }
 
+// An award result can list several accepted spellings of the same player. The
+// admin stores them comma-separated ("Messi, Lionel Messi"); a legacy single
+// name (no comma) is simply one variant. Returns the set of normalized variants
+// — a pick scores if it equals ANY of them. Real names never contain commas.
+function awardVariants(value) {
+  const raw = Array.isArray(value) ? value : String(value ?? '').split(',');
+  const set = new Set();
+  for (const v of raw) {
+    const n = normName(v);
+    if (n) set.add(n);
+  }
+  return set;
+}
+
 function countKoHits(matches, picks, results) {
   let n = 0;
   for (const m of matches) {
@@ -119,11 +133,12 @@ export function scoreBracket(bracket, fixture) {
   const thirdPlace = kr.THIRD_PLACE && kp.THIRD_PLACE === kr.THIRD_PLACE ? 1 : 0;
   const champion   = kr.FINAL       && kp.FINAL       === kr.FINAL       ? 1 : 0;
 
-  // Awards (case/accent-insensitive exact match)
+  // Awards: a pick scores if it matches ANY accepted variant the admin entered
+  // (case/accent/punctuation-insensitive).
   let awards = 0;
   for (const key of AWARD_KEYS) {
-    const actual = normName(ar[key]);
-    if (actual && normName(ap[key]) === actual) awards++;
+    const variants = awardVariants(ar[key]);
+    if (variants.size && variants.has(normName(ap[key]))) awards++;
   }
 
   const lines = [
