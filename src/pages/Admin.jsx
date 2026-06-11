@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase.js';
 import { GROUPS, teamsInGroup, teamLabel, TEAMS } from '../lib/teams.js';
-import { R32, R16, QF, SF, FINAL, THIRD_PLACE, matchLabel } from '../lib/bracket.js';
+import { R32, R16, QF, SF, FINAL, THIRD_PLACE, matchLabel, descendantsOf, r32MatchesUsingGroupSlot } from '../lib/bracket.js';
 import { AWARD_KEYS } from '../lib/scoring.js';
 import Flag from '../components/Flag.jsx';
 import KnockoutTab from './bracketTabs/KnockoutTab.jsx';
@@ -64,6 +64,18 @@ export default function Admin() {
     });
   }, []);
 
+  // Removes a knockout match's result AND every result downstream of it, so we
+  // never leave an orphaned winner whose teams no longer exist (which would show
+  // phantom teams in later rounds and wrongly score players).
+  function clearKoFrom(kr, matchIds) {
+    const next = { ...kr };
+    for (const id of matchIds) {
+      delete next[id];
+      for (const d of descendantsOf(id)) delete next[d];
+    }
+    return next;
+  }
+
   function setGroup(g, key, code) {
     setFx((s) => {
       const gr = { ...s.group_results };
@@ -72,15 +84,24 @@ export default function Admin() {
       if (key === 'winner' && cur.winner === cur.runnerUp) cur.runnerUp = null;
       if (key === 'runnerUp' && cur.winner === cur.runnerUp) cur.winner = null;
       gr[g] = cur;
-      return { ...s, group_results: gr };
+      // Changing a group W/RU changes which team fills the R32 slots that used
+      // it — wipe any now-stale knockout results from those R32 matches down.
+      const kr = clearKoFrom(s.knockout_results || {}, r32MatchesUsingGroupSlot(g, key));
+      return { ...s, group_results: gr, knockout_results: kr };
     });
   }
 
   function setThird(slotKey, code) {
-    setFx((s) => ({
-      ...s,
-      third_place_assignments: { ...s.third_place_assignments, [slotKey]: code || null },
-    }));
+    setFx((s) => {
+      // slotKey looks like 'R32_L1_a' — strip the side suffix to get the match.
+      const matchId = slotKey.replace(/_(a|b)$/, '');
+      const kr = clearKoFrom(s.knockout_results || {}, [matchId]);
+      return {
+        ...s,
+        third_place_assignments: { ...s.third_place_assignments, [slotKey]: code || null },
+        knockout_results: kr,
+      };
+    });
   }
 
   function setAward(key, value) {
@@ -128,15 +149,19 @@ export default function Admin() {
       setMsg('Awards cleared locally — press Save to apply.');
     } else if (view === 'KO') {
       const round = KO_ROUNDS.find((r) => r.id === koRound);
-      if (!confirm(`Clear the ${round.label} results only? Later rounds that depend on them will also reset. Press Save afterwards to apply.`)) return;
-      const ids = new Set(round.matches.map((m) => m.id));
-      setFx((s) => {
-        const kr = { ...s.knockout_results };
-        for (const id of ids) delete kr[id];
-        return { ...s, knockout_results: kr };
-      });
+      if (!confirm(`Clear the ${round.label} results? Later rounds that depend on them will also reset. Press Save afterwards to apply.`)) return;
+      setFx((s) => ({ ...s, knockout_results: clearKoFrom(s.knockout_results || {}, round.matches.map((m) => m.id)) }));
       setMsg(`${round.label} cleared locally — press Save to apply.`);
     }
+  }
+
+  // Wipes every knockout result (all rounds). Useful to clear out any stale /
+  // orphaned winners before the real knockouts begin.
+  function clearAllKnockout() {
+    setMsg(null); setErr(null);
+    if (!confirm('Clear ALL knockout results across every round? Press Save afterwards to apply. (Group results, thirds and awards are untouched.)')) return;
+    setFx((s) => ({ ...s, knockout_results: {} }));
+    setMsg('All knockout results cleared locally — press Save to apply.');
   }
 
   if (loading) return <div className="text-muted">Loading…</div>;
@@ -243,7 +268,7 @@ export default function Admin() {
             filled in, and each round unlocks as you set the previous one. This is the same bracket
             interface the players use.
           </p>
-          <div className="flex flex-wrap gap-1.5 mb-3">
+          <div className="flex flex-wrap items-center gap-1.5 mb-3">
             {KO_ROUNDS.map((r) => (
               <button key={r.id} onClick={() => setKoRound(r.id)}
                 className={`px-3 py-1.5 rounded-md text-sm whitespace-nowrap border
@@ -251,6 +276,10 @@ export default function Admin() {
                 {r.label}
               </button>
             ))}
+            <button onClick={clearAllKnockout}
+              className="ml-auto px-3 py-1.5 rounded-md text-sm whitespace-nowrap border border-red-700/40 text-red-300 hover:border-red-500">
+              Clear all knockout results
+            </button>
           </div>
           <KnockoutTab
             round={koRound}
