@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase.js';
 import { GROUPS, teamsInGroup, teamLabel, TEAMS } from '../lib/teams.js';
 import { R32, R16, QF, SF, FINAL, THIRD_PLACE, matchLabel, descendantsOf, r32MatchesUsingGroupSlot } from '../lib/bracket.js';
 import { AWARD_KEYS } from '../lib/scoring.js';
+import { adminMatchLocked, ADMIN_MATCH_LOCK_UTC, fmtDeadline } from '../lib/dates.js';
 import Flag from '../components/Flag.jsx';
 import KnockoutTab from './bracketTabs/KnockoutTab.jsx';
 
@@ -192,7 +193,7 @@ export default function Admin() {
           <button key={v.id} onClick={() => setView(v.id)}
             className={`px-3 py-1.5 rounded-md text-sm whitespace-nowrap border
               ${view === v.id ? 'border-gold text-gold bg-gold/10' : 'border-border text-muted hover:text-white'}`}>
-            {v.label}
+            {v.label}{v.id === 'MATCHES' && adminMatchLocked() ? ' 🔒' : ''}
           </button>
         ))}
       </div>
@@ -344,6 +345,11 @@ function MatchResults() {
   const [savingId, setSavingId] = useState(null);
   const [err, setErr] = useState(null);
 
+  // The match-prediction game is final after the admin buffer window — editing
+  // results closes so scores can't shift under players. Display points are
+  // untouched; this only stops further edits.
+  const locked = adminMatchLocked();
+
   async function load() {
     setLoading(true); setErr(null);
     const { data, error } = await supabase.from('group_matches').select('*').order('kickoff', { ascending: true });
@@ -354,6 +360,7 @@ function MatchResults() {
   useEffect(() => { load(); }, []);
 
   async function setResult(m, value) {
+    if (locked) return;
     setSavingId(m.id); setErr(null);
     const result = value || null;
     const { error } = await supabase.from('group_matches').update({ result }).eq('id', m.id);
@@ -384,34 +391,44 @@ function MatchResults() {
           points. Changes save automatically. ({entered} / {matches.length} entered)
         </p>
       </div>
+
+      {locked && (
+        <div className="card border-amber-600/40 bg-amber-900/10 text-amber-300 text-sm">
+          🔒 Match results are locked (closed {fmtDeadline(ADMIN_MATCH_LOCK_UTC)}). The group-stage
+          prediction game is final — entries are view-only now. Players' earned points are unaffected.
+        </div>
+      )}
+
       {err && <div className="card border-red-700/40 text-red-300 text-sm">{err}</div>}
 
-      {byDay.map((day) => (
-        <div key={day.key}>
-          <div className="label mb-2">{day.key}</div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            {day.items.map((m) => (
-              <div key={m.id} className="card flex items-center justify-between gap-3">
-                <div className="min-w-0">
-                  <div className="text-xs text-muted">Group {m.group_letter} · {new Date(m.kickoff).toLocaleString(undefined, { hour: 'numeric', minute: '2-digit' })}</div>
-                  <div className="text-sm text-white truncate">{teamLabel(m.team_a)} v {teamLabel(m.team_b)}</div>
+      <div className={locked ? 'opacity-60' : ''}>
+        {byDay.map((day) => (
+          <div key={day.key} className="mb-4">
+            <div className="label mb-2">{day.key}</div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {day.items.map((m) => (
+                <div key={m.id} className="card flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="text-xs text-muted">Group {m.group_letter} · {new Date(m.kickoff).toLocaleString(undefined, { hour: 'numeric', minute: '2-digit' })}</div>
+                    <div className="text-sm text-white truncate">{teamLabel(m.team_a)} v {teamLabel(m.team_b)}</div>
+                  </div>
+                  <select
+                    className="select w-40 shrink-0"
+                    value={m.result || ''}
+                    disabled={savingId === m.id || locked}
+                    onChange={(e) => setResult(m, e.target.value)}
+                  >
+                    <option value="">— not played —</option>
+                    <option value={m.team_a}>{teamLabel(m.team_a)} win</option>
+                    <option value="DRAW">Draw</option>
+                    <option value={m.team_b}>{teamLabel(m.team_b)} win</option>
+                  </select>
                 </div>
-                <select
-                  className="select w-40 shrink-0"
-                  value={m.result || ''}
-                  disabled={savingId === m.id}
-                  onChange={(e) => setResult(m, e.target.value)}
-                >
-                  <option value="">— not played —</option>
-                  <option value={m.team_a}>{teamLabel(m.team_a)} win</option>
-                  <option value="DRAW">Draw</option>
-                  <option value={m.team_b}>{teamLabel(m.team_b)} win</option>
-                </select>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
-        </div>
-      ))}
+        ))}
+      </div>
     </section>
   );
 }

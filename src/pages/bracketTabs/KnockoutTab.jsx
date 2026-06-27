@@ -1,9 +1,24 @@
 import { R32, R16, QF, SF, FINAL, THIRD_PLACE, resolveSlot, resolveParent, resolveThirdPlaceSide, matchLabel, descendantsOf } from '../../lib/bracket.js';
 import { TEAMS, teamLabel } from '../../lib/teams.js';
+import { POINTS } from '../../lib/scoring.js';
 import Flag from '../../components/Flag.jsx';
 
-// `round` is 'R32' | 'R16' | 'QF' | 'SF' | 'FINAL'
-export default function KnockoutTab({ round, bracket, fixture, setBracket, locked, readOnly }) {
+// Points a correct winner pick is worth, by match. Mirrors scoring.js exactly.
+function pointsForMatch(matchId) {
+  if (matchId === 'FINAL') return POINTS.champion;            // 15
+  if (matchId === 'THIRD_PLACE') return POINTS.thirdPlacePlayoff; // 10
+  if (matchId.startsWith('R32')) return POINTS.r32;           // 2
+  if (matchId.startsWith('R16')) return POINTS.r16;           // 3
+  if (matchId.startsWith('QF')) return POINTS.qf;             // 5
+  if (matchId.startsWith('SF')) return POINTS.sf;             // 8
+  return 0;
+}
+
+// `round` is 'R32' | 'R16' | 'QF' | 'SF' | 'FINAL'.
+// `showResults` turns on the "✓ Correct +N" signifiers once the admin enters the
+// real winner. It's OFF by default so the Admin result-entry view (which reuses
+// this component) never compares a result against itself.
+export default function KnockoutTab({ round, bracket, fixture, setBracket, locked, readOnly, showResults }) {
   const disabled = locked || readOnly;
   const ctx = {
     groupPicks: bracket?.group_picks || {},
@@ -29,6 +44,7 @@ export default function KnockoutTab({ round, bracket, fixture, setBracket, locke
   function rowFor(matchId, date, sides) {
     const [aSide, bSide] = sides;
     const matchLocked = disabled || aSide.locked || bSide.locked || !aSide.code || !bSide.code;
+    const actualCode = showResults ? (ctx.fixture.knockout_results?.[matchId] || null) : null;
     return (
       <MatchRow
         key={matchId}
@@ -36,6 +52,8 @@ export default function KnockoutTab({ round, bracket, fixture, setBracket, locke
         date={date}
         sides={sides}
         pickedCode={ctx.knockoutPicks[matchId] || ''}
+        actualCode={actualCode}
+        points={pointsForMatch(matchId)}
         matchLocked={matchLocked}
         onPick={(code) => pick(matchId, code)}
       />
@@ -108,8 +126,10 @@ export default function KnockoutTab({ round, bracket, fixture, setBracket, locke
 // ─── unmount/remount on every parent render — that was causing scroll  ───
 // ─── position to reset to top whenever a pick was made.                ───
 
-function MatchRow({ matchId, date, sides, pickedCode, matchLocked, onPick }) {
+function MatchRow({ matchId, date, sides, pickedCode, actualCode, points, matchLocked, onPick }) {
   const [aSide, bSide] = sides;
+  const decided = !!actualCode;
+  const correct = decided && pickedCode && pickedCode === actualCode;
   return (
     <div className="card mb-2">
       <div className="flex items-center justify-between mb-2">
@@ -117,9 +137,9 @@ function MatchRow({ matchId, date, sides, pickedCode, matchLocked, onPick }) {
         {date && <div className="text-xs text-muted">{date}</div>}
       </div>
       <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
-        <SideLabel side={aSide} highlighted={pickedCode === aSide.code} align="left" />
+        <SideLabel side={aSide} highlighted={pickedCode === aSide.code} isResult={decided && actualCode === aSide.code} align="left" />
         <span className="text-muted text-xs">vs</span>
-        <SideLabel side={bSide} highlighted={pickedCode === bSide.code} align="right" />
+        <SideLabel side={bSide} highlighted={pickedCode === bSide.code} isResult={decided && actualCode === bSide.code} align="right" />
       </div>
       <div className="mt-2">
         <select
@@ -136,6 +156,13 @@ function MatchRow({ matchId, date, sides, pickedCode, matchLocked, onPick }) {
           ))}
         </select>
       </div>
+      {decided && (
+        <div className={`mt-2 text-[11px] ${correct ? 'text-emerald-400' : 'text-red-400'}`}>
+          {correct
+            ? `✓ Correct +${points} pt${points === 1 ? '' : 's'}`
+            : `✗ ${pickedCode ? 'Missed' : 'No pick'} · Winner: ${teamLabel(actualCode)}`}
+        </div>
+      )}
     </div>
   );
 }
@@ -144,7 +171,7 @@ function Helper({ text }) {
   return <div className="text-xs text-muted mb-3">{text}</div>;
 }
 
-function SideLabel({ side, highlighted, align = 'left' }) {
+function SideLabel({ side, highlighted, isResult = false, align = 'left' }) {
   const rowDir = align === 'right' ? 'flex-row-reverse' : 'flex-row';
   const text = side.locked ? (side.reason || side.placeholder || 'TBD') : null;
   const isStructured = side.locked && side.placeholder && side.placeholder !== 'TBD' && !side.reason;
@@ -161,10 +188,14 @@ function SideLabel({ side, highlighted, align = 'left' }) {
   }
   if (!side.code) return <div className={`text-muted text-sm ${align === 'right' ? 'text-right' : ''}`}>TBD</div>;
   const t = TEAMS[side.code];
+  // The actual winner (isResult) shows emerald and outranks the gold "your pick"
+  // tint, so a correct pick reads emerald and a wrong one keeps gold on the loser.
+  const tone = isResult ? 'text-emerald-400' : highlighted ? 'text-gold' : '';
   return (
-    <div className={`flex items-center gap-2 text-sm font-semibold ${rowDir} ${highlighted ? 'text-gold' : ''}`}>
+    <div className={`flex items-center gap-2 text-sm font-semibold ${rowDir} ${tone}`}>
       <Flag code={side.code} size="sm" />
       <span className="truncate">{t?.name || side.code}</span>
+      {isResult && <span className="text-emerald-400 text-xs shrink-0">✓</span>}
     </div>
   );
 }

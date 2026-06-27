@@ -1,10 +1,12 @@
 import { GROUPS, teamsInGroup, teamLabel } from '../../lib/teams.js';
 import Flag from '../../components/Flag.jsx';
 import { r32MatchesUsingGroupSlot, descendantsOf } from '../../lib/bracket.js';
+import { POINTS } from '../../lib/scoring.js';
 
-export default function GroupStageTab({ bracket, setBracket, locked, readOnly }) {
+export default function GroupStageTab({ bracket, setBracket, locked, readOnly, fixture }) {
   const disabled = locked || readOnly;
   const picks = bracket?.group_picks || {};
+  const results = fixture?.group_results || {};
 
   function set(group, key, code) {
     setBracket((b) => {
@@ -43,6 +45,7 @@ export default function GroupStageTab({ bracket, setBracket, locked, readOnly })
       {GROUPS.map((g) => {
         const teams = teamsInGroup(g);
         const cur = picks[g] || {};
+        const actual = results[g] || {};
         return (
           <div key={g} className="card">
             <div className="flex items-center justify-between mb-3">
@@ -57,12 +60,14 @@ export default function GroupStageTab({ bracket, setBracket, locked, readOnly })
                   <option value="">— pick —</option>
                   {teams.map((c) => <option key={c} value={c}>{teamLabel(c)}</option>)}
                 </select>
+                <PickResult pick={cur.winner} actual={actual.winner} points={POINTS.groupWinner} />
               </Field>
               <Field label="Runner-up" code={cur.runnerUp}>
                 <select className="select" disabled={disabled} value={cur.runnerUp || ''} onChange={(e) => set(g, 'runnerUp', e.target.value)}>
                   <option value="">— pick —</option>
                   {teams.filter((c) => c !== cur.winner).map((c) => <option key={c} value={c}>{teamLabel(c)}</option>)}
                 </select>
+                <PickResult pick={cur.runnerUp} actual={actual.runnerUp} points={POINTS.groupRunnerUp} />
               </Field>
             </div>
           </div>
@@ -80,6 +85,21 @@ function Field({ label, code, children }) {
         {code && <Flag code={code} size="sm" />}
       </div>
       {children}
+    </div>
+  );
+}
+
+// Once the admin enters the real group result, show the player whether their
+// pick landed (and the points it earned). Renders nothing until then. Display
+// only — never alters the stored pick.
+function PickResult({ pick, actual, points }) {
+  if (!actual) return null;
+  const correct = pick && pick === actual;
+  return (
+    <div className={`mt-1.5 text-[11px] ${correct ? 'text-emerald-400' : 'text-red-400'}`}>
+      {correct
+        ? `✓ Correct +${points} pt${points === 1 ? '' : 's'}`
+        : `✗ ${pick ? 'Missed' : 'No pick'} · Actual: ${teamLabel(actual)}`}
     </div>
   );
 }

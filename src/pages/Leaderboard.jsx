@@ -50,7 +50,7 @@ export default function Leaderboard() {
       <div>
         <div className="display text-3xl text-gold">🏆 Leaderboard</div>
         <p className="text-muted text-sm mt-1">
-          Ranked by total points — your full bracket plus your group-match predictions.
+          Ranked by total points across the whole game.
         </p>
       </div>
 

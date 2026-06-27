@@ -8,6 +8,18 @@
 export const GROUP_LOCK_UTC = new Date('2026-06-18T07:00:00Z');
 export const KO_LOCK_UTC    = new Date('2026-06-28T19:00:00Z');
 
+// The group-stage match-prediction mini-game runs only through the group stage.
+// It closes the night the group stage ends — June 27, 2026, 10:00 PM MST (≈3h
+// after the 7 PM MST final-round kickoff) = 2026-06-28T05:00:00Z. After this the
+// prediction UI is replaced by a thank-you summary. NOTE: points already earned
+// are unaffected — they keep counting toward every total and the leaderboard.
+export const MATCH_GAME_CLOSE_UTC = new Date('2026-06-28T05:00:00Z');
+// The admin keeps editing group-match results for a buffer past the player-facing
+// close, then the Admin "Match Results" tab greys out: noon June 28 MST
+// = 2026-06-28T19:00:00Z (the same instant the knockout bracket locks) — plenty
+// of time to verify everything before it freezes.
+export const ADMIN_MATCH_LOCK_UTC = new Date('2026-06-28T19:00:00Z');
+
 // The leaderboard stays hidden until every bracket is frozen — otherwise people
 // could copy the leaders' knockout picks. That's the moment the knockout
 // bracket locks (right before R32 kicks off). Mirrors the RLS clause in
@@ -18,6 +30,8 @@ export function now() { return new Date(); }
 export function groupLocked(at = now()) { return at >= GROUP_LOCK_UTC; }
 export function knockoutLocked(at = now()) { return at >= KO_LOCK_UTC; }
 export function leaderboardUnlocked(at = now()) { return at >= LEADERBOARD_UNLOCK_UTC; }
+export function matchGameClosed(at = now()) { return at >= MATCH_GAME_CLOSE_UTC; }
+export function adminMatchLocked(at = now()) { return at >= ADMIN_MATCH_LOCK_UTC; }
 
 // Always renders dd hh mm ss so the seconds tick every render.
 export function fmtCountdown(target, from = now()) {

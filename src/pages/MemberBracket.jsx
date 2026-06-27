@@ -63,10 +63,10 @@ export default function MemberBracket() {
         ))}
       </div>
 
-      {tab === 'GROUPS' && <GroupStageTab bracket={bracket} setBracket={setBracket} locked readOnly />}
-      {tab === 'THIRDS' && <ThirdsTab bracket={bracket} setBracket={setBracket} locked readOnly />}
+      {tab === 'GROUPS' && <GroupStageTab bracket={bracket} setBracket={setBracket} locked readOnly fixture={fixture} />}
+      {tab === 'THIRDS' && <ThirdsTab bracket={bracket} setBracket={setBracket} locked readOnly fixture={fixture} />}
       {['R32','R16','QF','SF','FINAL'].includes(tab) && (
-        <KnockoutTab round={tab} bracket={bracket} fixture={fixture} setBracket={setBracket} locked readOnly />
+        <KnockoutTab round={tab} bracket={bracket} fixture={fixture} setBracket={setBracket} locked readOnly showResults />
       )}
       {tab === 'FULL' && <FullBracketTab bracket={bracket} fixture={fixture} />}
     </div>

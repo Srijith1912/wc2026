@@ -89,13 +89,13 @@ export default function Bracket() {
       {tab === 'GROUPS' && (
         <>
           {gLocked && <LockBanner text="Group stage picks locked (deadline passed)." />}
-          <GroupStageTab bracket={bracket} setBracket={setBracket} locked={gLocked} />
+          <GroupStageTab bracket={bracket} setBracket={setBracket} locked={gLocked} fixture={fixture} />
         </>
       )}
       {tab === 'THIRDS' && (
         <>
           {gLocked && <LockBanner text="Side bet locked (deadline passed)." />}
-          <ThirdsTab bracket={bracket} setBracket={setBracket} locked={gLocked} />
+          <ThirdsTab bracket={bracket} setBracket={setBracket} locked={gLocked} fixture={fixture} />
         </>
       )}
       {(tab === 'R32' || tab === 'R16' || tab === 'QF' || tab === 'SF' || tab === 'FINAL') && (
@@ -107,6 +107,7 @@ export default function Bracket() {
             fixture={fixture}
             setBracket={setBracket}
             locked={kLocked}
+            showResults
           />
         </>
       )}

@@ -22,8 +22,8 @@ const TAGLINES = [
 ];
 
 const STEPS = [
-  { n: '1', title: 'Build your bracket', body: 'Call every group, the knockouts, and the golden boot — all the way to the champion.' },
-  { n: '2', title: 'Predict every match', body: 'Pick the winner of each group game as it comes up. Quick, fun, and worth points.' },
+  { n: '1', title: 'Build your bracket', body: 'Call every group, the best-8 thirds, and the tournament awards.' },
+  { n: '2', title: 'Predict the knockouts', body: 'Pick every winner from the Round of 32 all the way to the champion.' },
   { n: '3', title: 'Climb the leaderboard', body: 'Everything is scored automatically. See how you stack up against everyone — and your friends.' },
 ];
 
@@ -75,7 +75,7 @@ export default function Home() {
             {taglines[tagline]}
           </p>
           <p className="text-muted mt-4 max-w-xl mx-auto text-base sm:text-lg">
-            Build your bracket, predict every match, and compete with players around the world.
+            Build your bracket, call the knockouts, and compete with players around the world.
             Free to play. Bragging rights guaranteed.
           </p>
         </section>

@@ -54,7 +54,7 @@ export default function HowToPlay() {
       <section className="card space-y-2">
         <div className="display text-xl text-gold">Scoring &amp; leaderboard</div>
         <p className="text-sm">As the tournament plays out, the admin enters the real results — group game outcomes, group finishers, the 8 advancing thirds, every knockout winner, and the award winners. Your score updates automatically against the table below, and you can watch your running total grow on the Bracket page.</p>
-        <p className="text-sm">Your <b>total</b> combines two games: your <b>bracket</b> (172 points) and your <b>group-stage match predictions</b> (72 games × 0.5 = 36 points) — <b>208 points</b> in all.</p>
+        <p className="text-sm">Your <b>total</b> combines two games: your <b>bracket</b> (172 points) and the <b>group-stage match predictions</b> (72 games × 0.5 = 36 points — <i>now concluded</i>) — <b>208 points</b> in all. Points earned in the match game are locked in and still count.</p>
         <p className="text-sm">The <b>Leaderboard</b> has two views: <b>Overall</b> (everyone who's scored, ranked) and <b>Group</b> (just the members of a group you pick). It shows names and scores only — to see someone's actual picks, they need to be in one of your groups (open the Group page and tap their name).</p>
         <div className="display text-base text-gold pt-1">Points table</div>
         <table className="w-full text-sm">
@@ -71,7 +71,7 @@ export default function HowToPlay() {
             <tr><td>Champion correct</td><td>15</td><td>15</td></tr>
             <tr><td>Golden Ball / Boot / Glove (×3)</td><td>5</td><td>15</td></tr>
             <tr className="border-t border-border/60"><td>Bracket subtotal</td><td></td><td>172</td></tr>
-            <tr><td>Group-stage match predictions (×72)</td><td>0.5</td><td>36</td></tr>
+            <tr><td>Group-stage match predictions (×72, concluded)</td><td>0.5</td><td>36</td></tr>
             <tr className="border-t border-border font-semibold"><td>Total possible</td><td></td><td>208</td></tr>
           </tbody>
         </table>

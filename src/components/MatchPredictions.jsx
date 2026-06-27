@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase.js';
 import { teamLabel } from '../lib/teams.js';
 import { scoreMatches } from '../lib/scoring.js';
+import { matchGameClosed, KO_LOCK_UTC, fmtDeadline } from '../lib/dates.js';
 import Flag from './Flag.jsx';
 
 const DRAW = 'DRAW';
@@ -79,6 +80,20 @@ export default function MatchPredictions({ currentUserId }) {
 
   if (loading) return <div className="card animate-pulse h-32" />;
 
+  // Group stage over → the prediction game closes. We swap the whole pick UI for
+  // a thank-you summary. The earned points (summary.points) are untouched and
+  // keep counting toward the leaderboard via useMatchStats / ScoreCard.
+  if (matchGameClosed()) {
+    return (
+      <MatchGameClosed
+        points={summary.points}
+        correct={summary.correct}
+        decided={summary.decided}
+        signedIn={!!currentUserId}
+      />
+    );
+  }
+
   const now = Date.now();
   const visible = matches.filter((m) => {
     const k = new Date(m.kickoff).getTime();
@@ -149,6 +164,37 @@ export default function MatchPredictions({ currentUserId }) {
           </div>
         ))
       )}
+    </div>
+  );
+}
+
+function fmtPts(n) { return Number.isInteger(n) ? String(n) : n.toFixed(1); }
+
+// Shown in place of the prediction grid once the group stage ends. Celebrates
+// the player's group-stage haul and points them at the knockouts before lockout.
+function MatchGameClosed({ points, correct, decided, signedIn }) {
+  const koLock = fmtDeadline(KO_LOCK_UTC);
+  return (
+    <div className="card border-gold/40 bg-gradient-to-b from-gold/10 to-transparent text-center space-y-3 py-7">
+      <div className="text-4xl" aria-hidden>🎉</div>
+      <div className="display text-2xl text-gold">That's a wrap on the group stage!</div>
+      {signedIn ? (
+        <p className="text-white/90 max-w-md mx-auto">
+          Thanks for playing the Group Stage match predictions. You earned{' '}
+          <b className="text-gold">{fmtPts(points)} point{points === 1 ? '' : 's'}</b>
+          {decided > 0 ? <> from <b>{correct}</b> correct call{correct === 1 ? '' : 's'}</> : null}.
+          Those points are locked into your total.
+        </p>
+      ) : (
+        <p className="text-white/90 max-w-md mx-auto">
+          The Group Stage match predictions have closed. Create a free account and jump straight into the knockouts.
+        </p>
+      )}
+      <p className="text-muted text-sm max-w-md mx-auto">
+        🏆 Now we move on to the knockouts — make sure your bracket is filled in and double-checked
+        before it locks <b className="text-white/90">{koLock}</b>.
+      </p>
+      {!signedIn && <Link to="/signup" className="btn-primary text-sm inline-block">Sign up to play</Link>}
     </div>
   );
 }

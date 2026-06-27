@@ -44,7 +44,8 @@ export default function FullBracketTab({ bracket, fixture }) {
   return (
     <div>
       <div className="text-xs text-muted mb-3">
-        Read-only view of your bracket. Picks are highlighted in gold. To change picks, use the round-specific tabs.
+        Read-only view of your bracket. Your picks are gold; once a result is in, the actual winner turns
+        green (✓) and a wrong pick is marked ✗. To change picks, use the round-specific tabs.
       </div>
 
       {/* The bracket needs to scroll horizontally on mobile. */}
@@ -60,9 +61,9 @@ export default function FullBracketTab({ bracket, fixture }) {
             {/* ─── FINAL (centered) ─── */}
             <div className="flex flex-col items-stretch justify-center">
               <div className="text-xs text-muted text-center mb-2">FINAL</div>
-              <MatchCell matchId="FINAL" date={FINAL.date} sides={finalSides} pickedCode={ctx.knockoutPicks.FINAL} highlight />
+              <MatchCell matchId="FINAL" date={FINAL.date} sides={finalSides} pickedCode={ctx.knockoutPicks.FINAL} actualCode={ctx.fixture.knockout_results?.FINAL || null} highlight />
               <div className="text-xs text-muted text-center mt-4 mb-2">3rd-PLACE</div>
-              <MatchCell matchId="THIRD_PLACE" date={THIRD_PLACE.date} sides={thirdSides} pickedCode={ctx.knockoutPicks.THIRD_PLACE} />
+              <MatchCell matchId="THIRD_PLACE" date={THIRD_PLACE.date} sides={thirdSides} pickedCode={ctx.knockoutPicks.THIRD_PLACE} actualCode={ctx.fixture.knockout_results?.THIRD_PLACE || null} />
             </div>
 
             {/* ─── RIGHT HALF (mirrored: SF → R32) ─── */}
@@ -91,6 +92,7 @@ function Col({ matches, sides, header, ctx, spacing = 0 }) {
             date={m.date}
             sides={sides[m.id]}
             pickedCode={ctx.knockoutPicks[m.id]}
+            actualCode={ctx.fixture.knockout_results?.[m.id] || null}
           />
         ))}
       </div>
@@ -98,7 +100,7 @@ function Col({ matches, sides, header, ctx, spacing = 0 }) {
   );
 }
 
-function MatchCell({ matchId, sides, date, pickedCode, highlight = false }) {
+function MatchCell({ matchId, sides, date, pickedCode, actualCode = null, highlight = false }) {
   const [a, b] = sides;
   return (
     <div className={`rounded-md border ${highlight ? 'border-gold/50 bg-gold/5' : 'border-border bg-panel'} p-2 text-xs`}>
@@ -106,19 +108,19 @@ function MatchCell({ matchId, sides, date, pickedCode, highlight = false }) {
         <span className="text-gold font-bold">{matchLabel(matchId)}</span>
         {date && <span className="text-muted text-[10px]">{date}</span>}
       </div>
-      <CellSide side={a} highlighted={pickedCode === a?.code} />
-      <CellSide side={b} highlighted={pickedCode === b?.code} />
+      <CellSide side={a} decided={!!actualCode} isPick={!!pickedCode && pickedCode === a?.code} isWinner={!!actualCode && actualCode === a?.code} />
+      <CellSide side={b} decided={!!actualCode} isPick={!!pickedCode && pickedCode === b?.code} isWinner={!!actualCode && actualCode === b?.code} />
     </div>
   );
 }
 
-function CellSide({ side, highlighted }) {
+function CellSide({ side, decided = false, isPick = false, isWinner = false }) {
   if (!side) return <div className="text-muted text-[11px] py-0.5">—</div>;
   if (side.locked) {
     const text = side.placeholder || side.reason || 'TBD';
     const isStructured = side.placeholder && side.placeholder !== 'TBD';
     return (
-      <div className={`flex items-center gap-1.5 py-0.5 ${highlighted ? 'text-gold' : 'text-muted'}`}>
+      <div className={`flex items-center gap-1.5 py-0.5 ${isPick ? 'text-gold' : 'text-muted'}`}>
         {isStructured
           ? <span className="font-mono text-[10px] px-1 py-0.5 rounded border border-border bg-panel2">{text}</span>
           : <><span aria-hidden>🔒</span><span className="truncate text-[11px]">{text}</span></>
@@ -128,10 +130,18 @@ function CellSide({ side, highlighted }) {
   }
   if (!side.code) return <div className="text-muted text-[11px] py-0.5">TBD</div>;
   const t = TEAMS[side.code];
+  // ✓/✗ only after the admin enters this match's result (`decided`). Before that,
+  // a pick is just gold — no verdict yet. Winner (green) outranks the gold pick
+  // tint, so a correct pick reads green and a wrong pick keeps gold + a red ✗.
+  const tone = isWinner ? 'text-emerald-400 font-semibold'
+             : isPick ? 'text-gold font-semibold'
+             : '';
   return (
-    <div className={`flex items-center gap-1.5 py-0.5 ${highlighted ? 'text-gold font-semibold' : ''}`}>
+    <div className={`flex items-center gap-1.5 py-0.5 ${tone}`}>
       <Flag code={side.code} size="sm" />
       <span className="truncate">{t?.name || side.code}</span>
+      {decided && isWinner && <span className="text-emerald-400 text-[10px] shrink-0">✓</span>}
+      {decided && isPick && !isWinner && <span className="text-red-400 text-[10px] shrink-0">✗</span>}
     </div>
   );
 }
