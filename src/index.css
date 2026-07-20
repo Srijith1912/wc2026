@@ -10,7 +10,7 @@ body { background: #0a0a0a; color: #fff; -webkit-font-smoothing: antialiased; ov
   .btn-primary { @apply btn bg-gold text-black hover:bg-goldDim; }
   .btn-secondary { @apply btn bg-panel2 text-white border border-border hover:border-gold; }
   .btn-ghost { @apply btn text-muted hover:text-white; }
-  .input { @apply w-full px-3 py-2.5 rounded-lg bg-panel2 border border-border text-white placeholder-muted focus:outline-none focus:border-gold; }
+  .input { @apply w-full px-3 py-2.5 rounded-lg bg-panel2 border border-border text-white placeholder-muted focus:outline-none focus:border-gold disabled:opacity-50 disabled:cursor-not-allowed; }
   .select { @apply input appearance-none pr-8 cursor-pointer; }
   .card { @apply bg-panel rounded-xl border border-border p-4; }
   .label { @apply text-xs uppercase tracking-wider text-muted font-semibold; }

@@ -86,6 +86,21 @@ function awardVariants(value) {
   return set;
 }
 
+// True if `pick` matches ANY accepted variant of the admin-entered award result
+// (case/accent/punctuation-insensitive). Same rule scoreBracket uses — exported
+// so the Awards card can show a ✓/✗ that always agrees with the score.
+export function isAwardCorrect(pick, resultValue) {
+  const variants = awardVariants(resultValue);
+  return variants.size > 0 && !!normName(pick) && variants.has(normName(pick));
+}
+
+// First human-friendly spelling of an award result (the admin may store several
+// comma-separated variants) — for "Winner: …" display next to a missed pick.
+export function awardResultLabel(resultValue) {
+  const raw = Array.isArray(resultValue) ? resultValue : String(resultValue ?? '').split(',');
+  return (raw[0] || '').trim();
+}
+
 function countKoHits(matches, picks, results) {
   let n = 0;
   for (const m of matches) {

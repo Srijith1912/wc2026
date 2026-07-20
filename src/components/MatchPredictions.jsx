@@ -3,8 +3,9 @@ import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase.js';
 import { teamLabel } from '../lib/teams.js';
 import { scoreMatches } from '../lib/scoring.js';
-import { matchGameClosed, KO_LOCK_UTC, fmtDeadline } from '../lib/dates.js';
+import { matchGameClosed, tournamentOver, KO_LOCK_UTC, fmtDeadline } from '../lib/dates.js';
 import Flag from './Flag.jsx';
+import TournamentOver from './TournamentOver.jsx';
 
 const DRAW = 'DRAW';
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -78,11 +79,17 @@ export default function MatchPredictions({ currentUserId }) {
     }
   }
 
+  // Whole tournament over → show the end-of-tournament summary (champion +
+  // where you finished). Takes precedence over the group-stage wrap below.
+  if (tournamentOver()) {
+    return <TournamentOver userId={currentUserId} />;
+  }
+
   if (loading) return <div className="card animate-pulse h-32" />;
 
-  // Group stage over → the prediction game closes. We swap the whole pick UI for
-  // a thank-you summary. The earned points (summary.points) are untouched and
-  // keep counting toward the leaderboard via useMatchStats / ScoreCard.
+  // Group stage over (but tournament still running) → the prediction game closes.
+  // We swap the pick UI for a thank-you summary. The earned points (summary.points)
+  // are untouched and keep counting toward the leaderboard via useMatchStats.
   if (matchGameClosed()) {
     return (
       <MatchGameClosed

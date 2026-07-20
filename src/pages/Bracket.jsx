@@ -60,7 +60,7 @@ export default function Bracket() {
       <GroupCTA userId={user?.id} />
 
       <div className="mb-6">
-        <AwardsCard bracket={bracket} setBracket={setBracket} locked={gLocked} />
+        <AwardsCard bracket={bracket} setBracket={setBracket} locked={gLocked} fixture={fixture} />
       </div>
 
       {/* The bracket game itself — set apart so its points aren't confused with

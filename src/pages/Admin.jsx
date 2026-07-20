@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase.js';
 import { GROUPS, teamsInGroup, teamLabel, TEAMS } from '../lib/teams.js';
 import { R32, R16, QF, SF, FINAL, THIRD_PLACE, matchLabel, descendantsOf, r32MatchesUsingGroupSlot } from '../lib/bracket.js';
 import { AWARD_KEYS } from '../lib/scoring.js';
-import { adminMatchLocked, ADMIN_MATCH_LOCK_UTC, fmtDeadline } from '../lib/dates.js';
+import { adminMatchLocked, ADMIN_MATCH_LOCK_UTC, tournamentOver, TOURNAMENT_END_UTC, fmtDeadline } from '../lib/dates.js';
 import Flag from '../components/Flag.jsx';
 import KnockoutTab from './bracketTabs/KnockoutTab.jsx';
 
@@ -52,6 +52,10 @@ export default function Admin() {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState(null);
   const [err, setErr] = useState(null);
+
+  // Tournament's over → the results are final. Freeze every results-entry form
+  // (group/thirds/knockout/awards) so nothing can be changed after the fact.
+  const resultsLocked = tournamentOver();
 
   useEffect(() => {
     supabase.from('fixture_state').select('*').eq('id', 1).maybeSingle().then(({ data }) => {
@@ -122,6 +126,7 @@ export default function Admin() {
   }
 
   async function save() {
+    if (resultsLocked) return;
     setBusy(true); setMsg(null); setErr(null);
     const { error } = await supabase.from('fixture_state').upsert({
       id: 1,
@@ -188,6 +193,14 @@ export default function Admin() {
         </p>
       </header>
 
+      {resultsLocked && (
+        <div className="card border-amber-600/40 bg-amber-900/10 text-amber-300 text-sm">
+          🔒 The tournament is over ({fmtDeadline(TOURNAMENT_END_UTC)}). All results are final —
+          the group, thirds, knockout and award forms are frozen and view-only. Match Results and
+          Reviews are handled separately.
+        </div>
+      )}
+
       <div className="flex flex-wrap gap-1.5">
         {VIEWS.map((v) => (
           <button key={v.id} onClick={() => setView(v.id)}
@@ -213,7 +226,7 @@ export default function Admin() {
                       <label className="label">Winner</label>
                       {cur.winner && <Flag code={cur.winner} size="sm" />}
                     </div>
-                    <select className="select mb-3" value={cur.winner || ''} onChange={(e) => setGroup(g, 'winner', e.target.value)}>
+                    <select className="select mb-3" disabled={resultsLocked} value={cur.winner || ''} onChange={(e) => setGroup(g, 'winner', e.target.value)}>
                       <option value="">—</option>
                       {teams.map((c) => <option key={c} value={c}>{teamLabel(c)}</option>)}
                     </select>
@@ -221,7 +234,7 @@ export default function Admin() {
                       <label className="label">Runner-up</label>
                       {cur.runnerUp && <Flag code={cur.runnerUp} size="sm" />}
                     </div>
-                    <select className="select" value={cur.runnerUp || ''} onChange={(e) => setGroup(g, 'runnerUp', e.target.value)}>
+                    <select className="select" disabled={resultsLocked} value={cur.runnerUp || ''} onChange={(e) => setGroup(g, 'runnerUp', e.target.value)}>
                       <option value="">—</option>
                       {teams.filter((c) => c !== cur.winner).map((c) => <option key={c} value={c}>{teamLabel(c)}</option>)}
                     </select>
@@ -244,7 +257,7 @@ export default function Admin() {
                     {cur && <Flag code={cur} size="sm" />}
                   </div>
                   <div className="display text-base text-gold mb-2">3rd from {s.options.join(' / ')}</div>
-                  <select className="select" value={cur || ''} onChange={(e) => setThird(s.key, e.target.value)}>
+                  <select className="select" disabled={resultsLocked} value={cur || ''} onChange={(e) => setThird(s.key, e.target.value)}>
                     <option value="">—</option>
                     {s.options.flatMap((g) => teamsInGroup(g))
                       .filter((c) => {
@@ -277,8 +290,8 @@ export default function Admin() {
                 {r.label}
               </button>
             ))}
-            <button onClick={clearAllKnockout}
-              className="ml-auto px-3 py-1.5 rounded-md text-sm whitespace-nowrap border border-red-700/40 text-red-300 hover:border-red-500">
+            <button onClick={clearAllKnockout} disabled={resultsLocked}
+              className="ml-auto px-3 py-1.5 rounded-md text-sm whitespace-nowrap border border-red-700/40 text-red-300 hover:border-red-500 disabled:opacity-50 disabled:cursor-not-allowed">
               Clear all knockout results
             </button>
           </div>
@@ -287,7 +300,7 @@ export default function Admin() {
             bracket={koBracket}
             fixture={fx}
             setBracket={setKoBracket}
-            locked={false}
+            locked={resultsLocked}
           />
         </section>
       )}
@@ -310,9 +323,10 @@ export default function Admin() {
                   type="text"
                   value={fx.awards_results[key] || ''}
                   onChange={(e) => setAward(key, e.target.value)}
+                  disabled={resultsLocked}
                   placeholder="e.g. Messi, Lionel Messi"
                   maxLength={200}
-                  className="w-full px-2 py-1.5 rounded-md bg-black/30 border border-border text-sm text-white placeholder:text-muted/60 focus:outline-none focus:border-gold"
+                  className="w-full px-2 py-1.5 rounded-md bg-black/30 border border-border text-sm text-white placeholder:text-muted/60 focus:outline-none focus:border-gold disabled:opacity-50 disabled:cursor-not-allowed"
                 />
               </label>
             ))}
@@ -328,10 +342,10 @@ export default function Admin() {
         <div className="sticky bottom-3 z-10 flex flex-wrap justify-end items-center gap-2">
           {msg && <span className="text-sm text-emerald-400">{msg}</span>}
           {err && <span className="text-sm text-red-400">{err}</span>}
-          <button onClick={clearSection} disabled={busy} className="btn-secondary text-sm border-red-700/40 text-red-300 hover:border-red-500">
+          <button onClick={clearSection} disabled={busy || resultsLocked} className="btn-secondary text-sm border-red-700/40 text-red-300 hover:border-red-500">
             Clear this section
           </button>
-          <button onClick={save} disabled={busy} className="btn-primary">{busy ? 'Saving…' : 'Save results'}</button>
+          <button onClick={save} disabled={busy || resultsLocked} className="btn-primary">{busy ? 'Saving…' : 'Save results'}</button>
         </div>
       )}
     </div>

@@ -6,6 +6,11 @@ A bracket app for the 2026 FIFA World Cup. Make your picks, see everyone's picks
 🇲🇽🇨🇦🇺🇸 **Hosts**: Canada, Mexico, USA
 👥 **Built for**: ~10 friends per group
 
+> ✅ **Status: complete.** The 2026 World Cup has ended — **🇪🇸 Spain are champions** —
+> and the app has run its full course. All picks are locked, every result is in, and the
+> Bracket page now closes with an end-of-tournament summary showing where each player
+> finished. See the [CHANGELOG](CHANGELOG.md) for the build history.
+
 ---
 
 ## How to play
@@ -36,6 +41,7 @@ After the knockout deadline (June 28, 12:00 PM MST), the bracket is locked. No m
 ### 5. Scoring & leaderboard
 - As the tournament plays out, the admin enters the real results on the **Admin** page — group finishers, the 8 advancing thirds, every knockout winner, and the award winners.
 - Your score updates automatically against the points table on the **How To Play** page (172 points possible, with the champion worth just 15 — group-stage picks genuinely matter). Watch your running total on the **Bracket** page.
+- As results come in, each pick shows a **✓ / ✗ signifier** with the points it earned — on match predictions, group finishers, best-8 thirds, every knockout round, and the individual awards — so you can see exactly what landed.
 - The **Leaderboard** has two views: **Overall** (everyone with at least 1 point, ranked) and **Group** (just the members of a group you pick). It opens when the knockout stage begins. It shows names and scores only — to view someone's actual picks they must be in one of your groups (Group page → tap their name). Scoring runs server-side, so the leaderboard stays fast no matter how many people play.
 - Each group has its own **persistent chat** — open the Group page, tap a group, and chat with members in real time (history is never deleted).
 
@@ -62,3 +68,7 @@ If the last leader leaves, leadership automatically passes to the next-earliest 
 - Want to start over while testing? Settings → Reset my bracket.
 
 That's it. Have fun.
+
+---
+
+🏁 **The 2026 World Cup is a wrap.** Thanks to everyone who played, predicted, and talked trash — you made it a success. Until the next one.

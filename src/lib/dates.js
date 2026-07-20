@@ -20,6 +20,13 @@ export const MATCH_GAME_CLOSE_UTC = new Date('2026-06-28T05:00:00Z');
 // of time to verify everything before it freezes.
 export const ADMIN_MATCH_LOCK_UTC = new Date('2026-06-28T19:00:00Z');
 
+// The tournament is over once the Final has been played (July 19, 2026). After
+// this the whole event is wrapped: the player Bracket page shows the end-of-
+// tournament summary, and the Admin results-entry forms (group/thirds/knockout/
+// awards) freeze so the final results can't be changed. 10 PM MST on Final day
+// = 2026-07-20T05:00:00Z.
+export const TOURNAMENT_END_UTC = new Date('2026-07-20T05:00:00Z');
+
 // The leaderboard stays hidden until every bracket is frozen — otherwise people
 // could copy the leaders' knockout picks. That's the moment the knockout
 // bracket locks (right before R32 kicks off). Mirrors the RLS clause in
@@ -32,6 +39,7 @@ export function knockoutLocked(at = now()) { return at >= KO_LOCK_UTC; }
 export function leaderboardUnlocked(at = now()) { return at >= LEADERBOARD_UNLOCK_UTC; }
 export function matchGameClosed(at = now()) { return at >= MATCH_GAME_CLOSE_UTC; }
 export function adminMatchLocked(at = now()) { return at >= ADMIN_MATCH_LOCK_UTC; }
+export function tournamentOver(at = now()) { return at >= TOURNAMENT_END_UTC; }
 
 // Always renders dd hh mm ss so the seconds tick every render.
 export function fmtCountdown(target, from = now()) {

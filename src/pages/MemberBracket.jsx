@@ -51,7 +51,7 @@ export default function MemberBracket() {
 
       <ScoreCard bracket={bracket} fixture={fixture} matchStats={matchStats} title={`${name || 'Player'}'s score`} showLeaderboardLink={false} />
 
-      <AwardsCard bracket={bracket} setBracket={setBracket} locked readOnly />
+      <AwardsCard bracket={bracket} setBracket={setBracket} locked readOnly fixture={fixture} />
 
       <div className="flex flex-wrap gap-1.5 mb-3">
         {TABS.map((t) => (
